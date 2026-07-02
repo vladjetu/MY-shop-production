@@ -50,7 +50,7 @@ skladové metafieldy.
   - `SAP Processed` — objednávka prešla do SAP. Ak tag chýba, objednávku
     vizuálne odlíšiť (sivý riadok + badge „čaká na SAP") — synchronizácia beží
     15–30 min, dlhšie chýbanie = možná chyba prenosu.
-  - `zasilkovna_selected` / `zasilkovna_unselected` — dopravca Zásilkovňa
+  - `zasilkovna_selected` / `zasilkovna_unselected` — dopravca Packeta
     (+ pobočka v order metafields / additional details `PickupPointName`).
   - Žiadny `zasilkovna_*` tag — dopravca GLS.
 - **Deadline:** v MVP sa nepočíta. Appka pri každom line iteme iba informatívne
@@ -96,14 +96,14 @@ Mobile-first zoznam/karty, na desktope tabuľka. Pre každú objednávku:
 - Číslo objednávky (#1772), dátum vytvorenia
 - Zákazník (meno)
 - Počet položiek / dizajnov
-- Badge dopravcu: Zásilkovňa / GLS
+- Badge dopravcu: Packeta / GLS
 - Badge „čaká na SAP" ak chýba tag `SAP Processed`
 - Triedenie: podľa dátumu vytvorenia, najstaršie hore. Filter/vyhľadávanie
   podľa čísla objednávky.
 
 ### 4.2 Detail objednávky
 
-Hlavička: číslo, dátum, zákazník, dopravca (+ pobočka Zásilkovne),
+Hlavička: číslo, dátum, zákazník, dopravca (+ pobočka Packety),
 tagy, poznámky z objednávky.
 
 Potom **karta pre každý dizajn** (zo Zakeke):
