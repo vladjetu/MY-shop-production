@@ -159,10 +159,19 @@ button {
 }
 
 .order-card {
+  display: block;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   padding: 14px 16px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease;
+}
+
+.order-card:hover,
+.order-card:focus-visible {
+  border-color: var(--color-accent);
 }
 
 .order-card--pending-sap {
@@ -276,4 +285,123 @@ button {
   .order-table-wrapper {
     display: block;
   }
+}
+
+/* ---------- Stavy: chyba / prázdno ---------- */
+
+.error-banner {
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  border: 1px solid #f0d9b5;
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  font-size: 0.9rem;
+}
+
+.empty-state {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+/* ---------- Detail objednávky ---------- */
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 14px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.back-link:hover {
+  color: var(--color-accent);
+}
+
+.order-detail-header {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.order-detail-header h2 {
+  margin: 0 0 8px;
+  font-size: 1.3rem;
+}
+
+.order-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.order-note {
+  margin: 10px 0 0;
+  font-size: 0.9rem;
+}
+
+.order-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.tag-chip {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.section-title {
+  font-size: 1rem;
+  margin: 0 0 10px;
+}
+
+.line-items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.line-item-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+}
+
+.line-item-title {
+  font-weight: 600;
+}
+
+.line-item-variant {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.line-item-sku {
+  font-size: 0.9rem;
+  margin-top: 4px;
+}
+
+.line-item-qty {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.line-item-stock {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
 }

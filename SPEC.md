@@ -22,6 +22,12 @@ responzívne aj pre desktop. Jazyk UI: slovenčina.
   Vercel native). Bez zbytočných knižníc, čistý svetlý dizajn.
 - **Backend:** Vercel serverless funkcie (Node.js). VŠETKY volania na Shopify
   a Zakeke idú výhradne cez ne. API kľúče nikdy nesmú byť vo frontende.
+- **Shopify autentifikácia:** appka je vytvorená cez Shopify Dev Dashboard,
+  preto nemá trvalý Admin API token. Server si server-to-server vymení
+  `SHOPIFY_CLIENT_ID` + `SHOPIFY_CLIENT_SECRET` za dočasný access token
+  (Client Credentials Grant, pozri
+  https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens/client-credentials-grant).
+  Token sa cachuje v pamäti servera a pred expiráciou automaticky obnovuje.
 - **Úložisko:** žiadne (MVP je bezstavové — všetko sa číta live z API).
 - **Obrázky:** knižnica `sharp` na serverovú úpravu PNG (DTF orez).
 - **Prístup:** jednoduché prihlásenie jedným zdieľaným heslom (env variable
@@ -31,7 +37,8 @@ responzívne aj pre desktop. Jazyk UI: slovenčina.
 
 ```
 SHOPIFY_STORE_DOMAIN     # merchyoueshop.myshopify.com
-SHOPIFY_ADMIN_TOKEN      # Admin API access token (custom app, read_orders, read_products)
+SHOPIFY_CLIENT_ID        # Dev Dashboard app — Client Credentials Grant
+SHOPIFY_CLIENT_SECRET    # Dev Dashboard app — Client Credentials Grant
 ZAKEKE_CLIENT_ID
 ZAKEKE_CLIENT_SECRET     # S2S OAuth token flow podľa Zakeke docs
 APP_PASSWORD             # heslo do appky
@@ -47,15 +54,25 @@ skladové metafieldy.
 
 - Objednávky: `status=open, fulfillment_status=unfulfilled` (GraphQL Admin API).
 - **Tagy (zobrazovať v zozname aj detaile):**
-  - `SAP Processed` — objednávka prešla do SAP. Ak tag chýba, objednávku
-    vizuálne odlíšiť (sivý riadok + badge „čaká na SAP") — synchronizácia beží
-    15–30 min, dlhšie chýbanie = možná chyba prenosu.
-  - `zasilkovna_selected` / `zasilkovna_unselected` — dopravca Packeta
-    (+ pobočka v order metafields / additional details `PickupPointName`).
-  - Žiadny `zasilkovna_*` tag — dopravca GLS.
+  - `SAP processed` (porovnávať bez ohľadu na veľkosť písmen) — objednávka
+    prešla do SAP. Ak tag chýba, objednávku vizuálne odlíšiť (sivý riadok +
+    badge „čaká na SAP") — synchronizácia beží 15–30 min, dlhšie chýbanie =
+    možná chyba prenosu.
+  - `zasilkovna_selected` — dopravca Packeta (+ pobočka v order metafields /
+    additional details `PickupPointName`).
+  - `zasilkovna_unselected` — zákazník mal na výber Packetu, ale pobočku
+    nevybral → dopravca GLS, v UI označiť ako „GLS (nevybraná pobočka
+    Packeta)", aby bolo jasné, že ide o iný prípad než bežné GLS.
+  - Žiadny `zasilkovna_*` tag — dopravca GLS (bez poznámky).
 - **Deadline:** v MVP sa nepočíta. Appka pri každom line iteme iba informatívne
   zobrazí aktuálne hodnoty metafieldov variantu `custom.stock_merchyou` a
   `custom.stock_suppliers` (sklad MERCHYOU / sklad dodávateľa).
+- **Skladové metafieldy a Zakeke klon produktu:** Zakeke pri personalizácii
+  vytvorí v Shopify klon objednaného produktu (Product type `zakeke-design`)
+  s rovnakým SKU ako originál, ale bez reálnej skladovej zásoby. Skladové
+  metafieldy (`custom.stock_merchyou`, `custom.stock_suppliers`) sa preto
+  musia čítať z **originálneho produktu** (Product type iný než
+  `zakeke-design`), dohľadaného podľa SKU — nie priamo z variantu line itemu.
 
 ### 3.2 Zakeke API — „dizajny a tlačové dáta"
 
@@ -95,9 +112,10 @@ Mobile-first zoznam/karty, na desktope tabuľka. Pre každú objednávku:
 
 - Číslo objednávky (#1772), dátum vytvorenia
 - Zákazník (meno)
-- Počet položiek / dizajnov
+- Počet SKU **a** súčet kusov na potlač (napr. „2 SKU · 8 ks") — samotný počet
+  SKU môže výrobu zmiasť, keďže jedno SKU môže mať quantity > 1.
 - Badge dopravcu: Packeta / GLS
-- Badge „čaká na SAP" ak chýba tag `SAP Processed`
+- Badge „čaká na SAP" ak chýba tag `SAP processed`
 - Triedenie: podľa dátumu vytvorenia, najstaršie hore. Filter/vyhľadávanie
   podľa čísla objednávky.
 
