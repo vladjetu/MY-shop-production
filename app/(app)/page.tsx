@@ -8,6 +8,7 @@ import {
   getTotalQuantity,
   hasSapProcessed,
 } from "@/lib/shopify/orders";
+import { fetchOrderNumbersWithDesigns } from "@/lib/zakeke/designs";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,27 @@ export default async function HomePage() {
     console.error("Nepodarilo sa načítať objednávky zo Shopify:", error);
     loadError =
       "Nepodarilo sa načítať objednávky zo Shopify. Skontroluj internetové pripojenie alebo to skús o chvíľu znova.";
+  }
+
+  // Ak sa zistenie nepodarí, radšej to nezobrazíme vôbec (bezpečný predvolený stav),
+  // než aby appka omylom označila objednávky s potlačou ako "Bez potlače".
+  let orderNumbersWithDesigns: Set<string> | null = null;
+  if (!loadError) {
+    try {
+      orderNumbersWithDesigns = await fetchOrderNumbersWithDesigns(
+        orders.map((order) => order.orderNumber.replace("#", ""))
+      );
+    } catch (error) {
+      console.error("Nepodarilo sa zistiť, ktoré objednávky majú potlač v Zakeke:", error);
+    }
+  }
+
+  function getSkuLabel(order: ShopifyOrder): string {
+    const bareNumber = order.orderNumber.replace("#", "");
+    if (orderNumbersWithDesigns && !orderNumbersWithDesigns.has(bareNumber)) {
+      return "Bez potlače";
+    }
+    return `${order.lineItems.length} SKU · ${getTotalQuantity(order)} ks`;
   }
 
   return (
@@ -53,9 +75,7 @@ export default async function HomePage() {
                     <span className="order-date">{formatDate(order.createdAt)}</span>
                   </div>
                   <div className="order-customer">{order.customerName}</div>
-                  <div className="order-items-count">
-                    {order.lineItems.length} SKU · {getTotalQuantity(order)} ks
-                  </div>
+                  <div className="order-items-count">{getSkuLabel(order)}</div>
                   <div className="order-badges">
                     <span
                       className={`badge ${
@@ -100,9 +120,7 @@ export default async function HomePage() {
                       </td>
                       <td>{formatDate(order.createdAt)}</td>
                       <td>{order.customerName}</td>
-                      <td>
-                        {order.lineItems.length} SKU · {getTotalQuantity(order)} ks
-                      </td>
+                      <td>{getSkuLabel(order)}</td>
                       <td>
                         <span
                           className={`badge ${

@@ -78,23 +78,53 @@ skladové metafieldy.
 
 Zdroj pre: zoznam dizajnov v objednávke, náhľady per strana, tlačové PNG per strana.
 
-- Autentifikácia: S2S OAuth token (client credentials).
+- **Autentifikácia:** `POST https://api.zakeke.com/token`, Basic auth
+  (`client_id:client_secret`) + telo `grant_type=client_credentials&access_type=S2S`.
+  Odpoveď má štandardné OAuth2 polia `access_token` + `expires_in` (dokumentácia
+  na docs.zakeke.com nesprávne uvádza `access-token` s pomlčkou — v reálnej
+  odpovedi je to `access_token`). Token sa cachuje a obnovuje rovnako ako
+  Shopify token (§2).
 - **Kľúčové zistenie z reálnych dát:** line item properties v Shopify
-  (`_zakekeFileForSide*`) obsahujú len šablónu názvov súborov a kód položky —
-  pri dvoch rovnakých produktoch v objednávke sú IDENTICKÉ, nedajú sa použiť
-  na spoľahlivé párovanie dizajn ↔ riadok objednávky.
-- **Preto:** zoznam dizajnov objednávky čítať priamo zo Zakeke **Orders API**
-  podľa čísla objednávky (napr. 1772). Zakeke vracia pre každý dizajn:
-  Design ID (napr. 102539159), Design Doc ID, Product SKU, Quantity,
-  Customized sides (FRONT/BACK/…). Presný endpoint overiť v
-  https://docs.zakeke.com (Orders API / Designs API).
-- Náhľady per strana: Designs API `GET /v3/designs/{designID}/{quantity}` →
-  `previewFiles[] { url, sideName }`.
-- Tlačové súbory per strana: Designs API outputfiles endpointy (PNG per side);
-  ZIP endpoint `GET /v1/designs/{designID}/outputfiles/zip` len ako fallback.
-- Párovanie so Shopify line itemami: podľa SKU + quantity (informatívne —
-  detail objednávky primárne zobrazuje dizajny zo Zakeke, doplnené o veľkosť
-  /variant zo Shopify, kde sa to dá jednoznačne priradiť).
+  (`_zakekeFileForSide*`) obsahujú len **nevyplnenú šablónu** — vypisujú
+  všetky možné tlačové zóny produktovej šablóny (napr. FRONT, BACK, IMPRINT,
+  LEFT/RIGHT SLEEVE), nie skutočne personalizované strany tejto objednávky.
+  Hodnoty ako `designID`/`qty` sú v nich doslova neupravený placeholder text.
+  Nedajú sa preto použiť na určenie, čo bolo naozaj potlačené.
+- **Preto:** zoznam dizajnov objednávky čítať zo Zakeke **Orders API**
+  `GET /v2/orders?pageSize=100&pageNumber=N` (vracia priamo pole objednávok,
+  nie objekt s kľúčom `data`) — appka stránkuje (max. 3 stránky á 100,
+  paralelne kvôli rýchlosti) a hľadá záznam, kde `orderNumber` sedí so
+  Shopify číslom objednávky. Priame vyhľadanie podľa `code` (Zakeke interné
+  ID) alebo `orderNumber` ako query parameter API nepodporuje.
+- Každá položka (`items[]`) v odpovedi už obsahuje `productSku`, `productName`,
+  `quantity` aj `printingFiles[] { type, url, sideName }` — **skutočne
+  personalizované strany s reálnymi tlačovými PNG súbormi** (presné, použijú sa
+  aj pri downloadoch v kroku 4). Objednávka bez personalizácie (čistý textil)
+  buď v Zakeke vôbec nie je, alebo má všetky položky bez `printingFiles` — v
+  zozname sa označí ako „Bez potlače" a v detaile ako „Iba textil bez potlače."
+- Numerické Design ID (napr. 102539159, zobrazované v UI) nie je samostatné
+  pole — je zakódované v názve súboru z `printingFiles[].url` (pozri §3.3).
+- **Mockup na tričku per strana (FRONT/BACK/...):** oficiálne REST API
+  (`GET /v3/designs/{designID}/{quantity}?modificationID=...`, dokumentované na
+  docs.zakeke.com) vracia pole `previewFiles` konzistentne **prázdne** — overené
+  opakovane na viacerých objednávkach a položkách, aj po tom, čo Zakeke support
+  pridal `designModificationID` do Orders API presne podľa ich inštrukcií
+  (nahlásené, čaká sa na vyjadrenie). Appka preto namiesto toho volá
+  **nezdokumentované interné GraphQL API** `POST https://apollo.zakeke.com/graphql`
+  (objavené reverzným inžinierstvom Network tabu v Zakeke merchant portáli —
+  `orderDetailContentQuery`, pole `design.previews { sideName, url }`).
+  Autentifikuje sa rovnakým S2S OAuth tokenom ako REST API (overené: identické
+  JWT claims `clientID`/`UserID`/`accessType`). Implementácia je izolovaná v
+  `lib/zakeke/internal-mockup-previews.ts` s jasným upozornením v kóde — ak
+  Zakeke tento endpoint zmení/zablokuje, appka potichu spadne späť na zobrazenie
+  `printingFiles` (reálny tlačový súbor bez mockupu na tričku), nie na chybu.
+- Náhľady (mockup aj tlačové súbory) sa v appke načítavajú cez `/api/zakeke-image`
+  (server-side proxy s allowlistom domény `*.zakeke.com`), nikdy priamo
+  z prehliadača.
+- Párovanie so Shopify line itemami: podľa SKU + quantity, každý Shopify
+  line item sa použije nanajvýš raz (informatívne — detail objednávky
+  primárne zobrazuje dizajny zo Zakeke, doplnené o variant/sklad zo Shopify,
+  kde sa dá jednoznačne priradiť).
 
 ### 3.3 Overená štruktúra tlačových súborov (z reálneho ZIPu)
 
@@ -113,7 +143,9 @@ Mobile-first zoznam/karty, na desktope tabuľka. Pre každú objednávku:
 - Číslo objednávky (#1772), dátum vytvorenia
 - Zákazník (meno)
 - Počet SKU **a** súčet kusov na potlač (napr. „2 SKU · 8 ks") — samotný počet
-  SKU môže výrobu zmiasť, keďže jedno SKU môže mať quantity > 1.
+  SKU môže výrobu zmiasť, keďže jedno SKU môže mať quantity > 1. Ak objednávka
+  nemá v Zakeke žiadnu personalizáciu (čistý textil), namiesto toho sa zobrazí
+  „Bez potlače".
 - Badge dopravcu: Packeta / GLS
 - Badge „čaká na SAP" ak chýba tag `SAP processed`
 - Triedenie: podľa dátumu vytvorenia, najstaršie hore. Filter/vyhľadávanie
