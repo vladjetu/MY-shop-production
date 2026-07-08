@@ -8,6 +8,8 @@ export default function LoginPage({
   return (
     <main className="login-page">
       <div className="login-card">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/brand/icon_MY.svg" alt="MERCHYOU" className="login-logo" />
         <h1>MY shop production</h1>
         <p className="login-subtitle">Interná appka pre výrobu — MERCHYOU.shop</p>
         <form action="/api/login" method="POST" className="login-form">

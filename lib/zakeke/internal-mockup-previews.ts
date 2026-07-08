@@ -1,3 +1,4 @@
+import { getOrSetCache } from "../cache";
 import { getAccessToken } from "./token";
 
 /**
@@ -62,6 +63,14 @@ const PREVIEWS_QUERY = `
 // Vráti mapu designID (numerické, napr. 102539156) -> mockup obrázky per strana.
 // Pri akomkoľvek zlyhaní vráti prázdnu mapu (potichu, viď POZOR vyššie).
 export async function fetchMockupPreviewsByOrderId(
+  zakekeOrderId: number
+): Promise<Map<number, MockupPreview[]>> {
+  return getOrSetCache(`zakeke-mockups:${zakekeOrderId}`, () =>
+    fetchMockupPreviewsByOrderIdUncached(zakekeOrderId)
+  );
+}
+
+async function fetchMockupPreviewsByOrderIdUncached(
   zakekeOrderId: number
 ): Promise<Map<number, MockupPreview[]>> {
   const result = new Map<number, MockupPreview[]>();

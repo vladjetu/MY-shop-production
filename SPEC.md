@@ -32,6 +32,16 @@ responzívne aj pre desktop. Jazyk UI: slovenčina.
   Zakeke CDN (Cloudflare R2) ignoruje `response-content-disposition`
   parameter, takže by sme prišli o čitateľný názov súboru podľa §4.3.
   DTG preto zostáva streamovaný cez našu funkciu.
+- **Výkon:** server-side in-memory cache (`lib/cache.ts`, TTL ~3 min) na
+  výsledky Zakeke Orders API a mockup preview dopytov (kľúč: číslo
+  objednávky, resp. stránka `/v2/orders` pre zdieľanie medzi objednávkami).
+  Homepage po zistení, ktoré objednávky majú potlač, spustí na pozadí
+  (zámerne bez `await` — pozri komentár v `app/(app)/page.tsx`) prefetch
+  detailu každej z nich, aby bol neskorší klik na detail rýchly z teplej
+  cache. Detail objednávky používa React Suspense: hlavička (Shopify dáta)
+  sa vykreslí hneď, sekcia dizajnov (Zakeke, pomalšia) sa strimuje s
+  skeleton fallbackom, kým sa nedotiahne — overené, že Next.js skutočne
+  posiela chunked odpoveď a nie hotovú stránku naraz.
 - **Shopify autentifikácia:** appka je vytvorená cez Shopify Dev Dashboard,
   preto nemá trvalý Admin API token. Server si server-to-server vymení
   `SHOPIFY_CLIENT_ID` + `SHOPIFY_CLIENT_SECRET` za dočasný access token
@@ -235,4 +245,40 @@ nepočítajú ani nezobrazujú.
 2. Shopify integrácia: zoznam objednávok, tagy, skladové metafieldy.
 3. Zakeke integrácia: OAuth, dizajny objednávky, náhľady.
 4. Download endpointy: DTG proxy + DTF trim cez sharp.
+   - 4b. Výkon (cache, prefetch, skeleton) a branding (§9).
 5. Doladenie UI podľa spätnej väzby výroby.
+
+## 9. Branding
+
+- **Fonty:** Metropolis, self-hosted cez `@font-face` (`public/brand/*.woff2`,
+  žiadny externý CDN/Google Fonts). Len dva rezy — Light (300) ako predvolený
+  pre bežný text, Bold (700) na nadpisy (`h1`/`h2`/`h3`) a zvýraznené prvky
+  (badge, tlačidlá, čísla objednávok). Všetky ostatné `font-weight` hodnoty
+  v CSS sú preto zjednotené na 300/700 — medzihodnoty (napr. 600) by prehliadač
+  bez zodpovedajúceho rezu len falšoval (font synthesis), čo pri Metropolise
+  vyzeralo nekonzistentne.
+- **Farby:** primárna tmavá `#231f20` (text, pozadie hlavičky appky),
+  akcentová tyrkysová `#8ec1c3` (primárne tlačidlá, aktívne/hover stavy,
+  badge dopravcu Packeta — plná tyrkysová plocha s tmavým textom, nie
+  vlastný odtieň). Text na tyrkysovom pozadí je tmavý (`#231f20`), nie biely
+  — biely má na tejto farbe slabý kontrast. **Zámerne žiadne ďalšie farebné
+  kombinácie** (napr. vlastný "zelenomodrý" odtieň pre badge dopravcu) — iba
+  čierna/biela/odtiene šedej/tyrkysová, s výnimkou červenej na badge „čaká
+  na SAP" (zámerne negatívna/varovná informácia). Zvyšok (pozadie, karty,
+  okraje) ostáva neutrálny svetlý, bez zmeny.
+- **Logo:** `public/brand/icon_MY.svg` — v hlavičke appky (vedľa názvu),
+  na login stránke (nad nadpisom) a ako favicon (`app/layout.tsx` →
+  `metadata.icons`). Middleware musí mať `/brand` vo výnimke z auth
+  presmerovania (logo/fonty musia byť dostupné aj na neprihlásenej
+  `/login` stránke) — inak sa tvária ako rozbitý obrázok/font, keďže
+  request na ne presmeruje na `/login` namiesto vrátenia súboru.
+- **Badge nesmú mať `white-space: nowrap`** — pobočka Packeta môže byť
+  dlhá (napr. „Z-BOX Liptovský Mikuláš, Hrušková 514/9 (COOP Jednota)"),
+  pri `nowrap` preteká cez okraj karty na mobile. Musia sa vedieť zalomiť
+  (`white-space: normal` + `min-width: 0`, keďže ide o flex item).
+- **Variant produktu (farba/veľkosť) sa zobrazuje ako samostatný chip**
+  (`.variant-chip`), nie pripojený k názvu produktu bodkou — pri dlhších
+  názvoch produktu bola bodka prakticky neviditeľná. Info blok (SKU, názov,
+  variant, množstvo, sklady) používa spoločný `.info-stack` wrapper s
+  jednotným rozostupom (flex `gap`) namiesto ručne ladeného `margin-top`
+  na každom riadku.

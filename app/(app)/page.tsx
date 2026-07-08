@@ -8,7 +8,7 @@ import {
   getTotalQuantity,
   hasSapProcessed,
 } from "@/lib/shopify/orders";
-import { fetchOrderNumbersWithDesigns } from "@/lib/zakeke/designs";
+import { fetchOrderDesigns, fetchOrderNumbersWithDesigns } from "@/lib/zakeke/designs";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +34,19 @@ export default async function HomePage() {
       );
     } catch (error) {
       console.error("Nepodarilo sa zistiť, ktoré objednávky majú potlač v Zakeke:", error);
+    }
+  }
+
+  // Prefetch: predohrejeme cache (viď lib/cache.ts, TTL ~3 min) pre detail objednávok,
+  // ktoré majú potlač, aby bol prechod na detail rýchly. Zámerne BEZ await — odskúšali
+  // sme to aj s await a keď appka čakala na ~15-19 paralelných GraphQL dopytov na mockupy,
+  // homepage sa spomalila z ~1s na 13s. Takto beží na pozadí; ak sa runtime ukončí skôr,
+  // než dobehne, jednoducho sa nič neprehreje (bez dopadu na to, čo vidí používateľ).
+  if (orderNumbersWithDesigns) {
+    for (const orderNumber of orderNumbersWithDesigns) {
+      fetchOrderDesigns(orderNumber).catch((error) => {
+        console.error(`Prefetch dizajnov pre objednávku ${orderNumber} zlyhal:`, error);
+      });
     }
   }
 
@@ -98,7 +111,7 @@ export default async function HomePage() {
                   <th>Objednávka</th>
                   <th>Dátum</th>
                   <th>Zákazník</th>
-                  <th>SKU / ks</th>
+                  <th className="order-table-sku-col">SKU · KS</th>
                   <th>Dopravca</th>
                   <th>SAP</th>
                 </tr>
@@ -120,7 +133,7 @@ export default async function HomePage() {
                       </td>
                       <td>{formatDate(order.createdAt)}</td>
                       <td>{order.customerName}</td>
-                      <td>{getSkuLabel(order)}</td>
+                      <td className="order-table-sku-col">{getSkuLabel(order)}</td>
                       <td>
                         <span
                           className={`badge ${

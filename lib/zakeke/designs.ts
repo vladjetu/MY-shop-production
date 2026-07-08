@@ -1,3 +1,4 @@
+import { getOrSetCache } from "../cache";
 import { zakekeGet } from "./client";
 import { fetchMockupPreviewsByOrderId } from "./internal-mockup-previews";
 
@@ -58,11 +59,18 @@ function extractDesignIdFromUrl(url: string): string | null {
   return stripped.length > 0 ? stripped : null;
 }
 
+// Cachovaná per-stránka (nie per-objednávka) — takto sa zoznam objednávok (homepage,
+// fetchOrderNumbersWithDesigns) a detail objednávky (findOrderByNumber) delia o rovnaké
+// stiahnuté stránky, namiesto aby si každý ťahal tie isté dáta znova.
+function fetchOrdersPage(page: number): Promise<OrdersListResponse> {
+  return getOrSetCache(`zakeke-orders-page:${page}`, () =>
+    zakekeGet<OrdersListResponse>(`/v2/orders?pageSize=${PAGE_SIZE}&pageNumber=${page}`)
+  );
+}
+
 async function findOrderByNumber(orderNumber: string): Promise<OrderResponse | null> {
   for (let page = 1; page <= MAX_PAGES_TO_SEARCH; page += 1) {
-    const orders = await zakekeGet<OrdersListResponse>(
-      `/v2/orders?pageSize=${PAGE_SIZE}&pageNumber=${page}`
-    );
+    const orders = await fetchOrdersPage(page);
 
     const found = orders.find((order) => order.orderNumber === orderNumber);
     if (found) return found;
@@ -87,9 +95,7 @@ export async function fetchOrderNumbersWithDesigns(orderNumbers: string[]): Prom
   const withDesigns = new Set<string>();
 
   const pages = await Promise.all(
-    Array.from({ length: MAX_PAGES_TO_SEARCH }, (_, index) =>
-      zakekeGet<OrdersListResponse>(`/v2/orders?pageSize=${PAGE_SIZE}&pageNumber=${index + 1}`)
-    )
+    Array.from({ length: MAX_PAGES_TO_SEARCH }, (_, index) => fetchOrdersPage(index + 1))
   );
 
   for (const orders of pages) {
@@ -110,6 +116,10 @@ export async function fetchOrderNumbersWithDesigns(orderNumbers: string[]): Prom
 }
 
 export async function fetchOrderDesigns(orderNumber: string): Promise<ZakekeDesign[]> {
+  return getOrSetCache(`zakeke-designs:${orderNumber}`, () => fetchOrderDesignsUncached(orderNumber));
+}
+
+async function fetchOrderDesignsUncached(orderNumber: string): Promise<ZakekeDesign[]> {
   const order = await findOrderByNumber(orderNumber);
   if (!order) return [];
 

@@ -4,7 +4,13 @@ import { SESSION_COOKIE_NAME, getExpectedSessionToken } from "@/lib/auth";
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (pathname.startsWith("/login") || pathname.startsWith("/api/login")) {
+  // /brand obsahuje len verejné statické assety (logo, fonty) — potrebné aj
+  // na neprihlásenej /login stránke, žiadne citlivé dáta.
+  if (
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/api/login") ||
+    pathname.startsWith("/brand")
+  ) {
     return NextResponse.next();
   }
 
