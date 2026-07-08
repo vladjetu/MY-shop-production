@@ -22,6 +22,16 @@ responzívne aj pre desktop. Jazyk UI: slovenčina.
   Vercel native). Bez zbytočných knižníc, čistý svetlý dizajn.
 - **Backend:** Vercel serverless funkcie (Node.js). VŠETKY volania na Shopify
   a Zakeke idú výhradne cez ne. API kľúče nikdy nesmú byť vo frontende.
+- **Download endpointy (`/api/download`):** DTG sa streamuje priamo (bez
+  bufferovania), DTF sa orezáva cez `sharp` (potrebuje celý súbor v pamäti —
+  na obrázok 4600×5800 px to je rádovo desiatky MB). Nastavené
+  `export const maxDuration = 60`. Vercel Hobby plán (Fluid Compute) má
+  defaultne aj maximálne 300 s na funkciu, čo je viac než dosť.
+  Zvažovali sme presmerovanie DTG priamo na Zakeke CDN (úplne by obišlo
+  našu funkciu, nulové riziko limitu veľkosti odpovede) — zamietnuté, lebo
+  Zakeke CDN (Cloudflare R2) ignoruje `response-content-disposition`
+  parameter, takže by sme prišli o čitateľný názov súboru podľa §4.3.
+  DTG preto zostáva streamovaný cez našu funkciu.
 - **Shopify autentifikácia:** appka je vytvorená cez Shopify Dev Dashboard,
   preto nemá trvalý Admin API token. Server si server-to-server vymení
   `SHOPIFY_CLIENT_ID` + `SHOPIFY_CLIENT_SECRET` za dočasný access token
@@ -158,16 +168,22 @@ tagy, poznámky z objednávky.
 
 Potom **karta pre každý dizajn** (zo Zakeke):
 
-- Náhľad(y) — obrázky per strana, veľké, klikateľné na zväčšenie
+- Náhľad(y) — obrázky per strana (mockup na tričku, ak sa podarilo načítať;
+  fallback na reálny tlačový súbor), veľké, klikateľné na zväčšenie
 - Design ID, **SKU textilu** (výrazne — spoločný identifikátor so SAP),
   názov produktu, variant (farba/veľkosť zo Shopify), **množstvo kusov**
 - Hodnoty oboch skladov: `custom.stock_merchyou` (sklad MERCHYOU) a
   `custom.stock_suppliers` (sklad dodávateľa)
-- Pre každú customized stranu (FRONT/BACK/…):
+- Pre každú customized stranu (FRONT/BACK/…), na jednom riadku
+  `{STRANA} ⬇ DTG ⬇ DTF (orezané)`:
   - tlačidlo **⬇ DTG** — originál PNG od Zakeke bez zmeny (zachovaný rozmer
     palety)
   - tlačidlo **⬇ DTF (orezané)** — PNG orezané na hranice grafiky
     (server-side `sharp`: trim podľa alfa kanála)
+- Layout: mobile-first (náhľady hore, tlačidlá pod nimi); na desktope
+  (od 720px) mriežka náhľadov vľavo a tlačidlá vpravo od nej v jednom riadku,
+  aby sa nemuselo scrollovať. Overené aj pre 7 strán s najdlhšími názvami
+  (napr. „LEFT SH. SLEEVE").
 - Voliteľne (podľa miesta v UI): nenápadný link „Summary PDF (Zakeke)"
 
 ### 4.3 Pomenovanie súborov pri downloade

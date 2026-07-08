@@ -4,6 +4,9 @@ import { fetchMockupPreviewsByOrderId } from "./internal-mockup-previews";
 export type ZakekeDesignSide = {
   sideName: string;
   previewUrl: string;
+  // Priama (neproxovaná) URL na Zakeke CDN — pre server-side download/orez v kroku 4.
+  // Nikdy sa neposiela do prehliadača (ten dostane len previewUrl cez /api/zakeke-image).
+  fileUrl: string;
 };
 
 export type ZakekeDesign = {
@@ -129,10 +132,12 @@ export async function fetchOrderDesigns(orderNumber: string): Promise<ZakekeDesi
       sides: files.map((file) => ({
         sideName: file.sideName,
         previewUrl: toProxyUrl(file.url),
+        fileUrl: file.url,
       })),
       mockups: mockups.map((mockup) => ({
         sideName: mockup.sideName,
         previewUrl: toProxyUrl(mockup.url),
+        fileUrl: mockup.url,
       })),
     };
   });

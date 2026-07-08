@@ -135,7 +135,12 @@ function OrderDetail({
         <>
           <div className="design-cards">
             {matchedDesigns.map((matched, index) => (
-              <DesignCard key={`${matched.design.designId}-${index}`} matched={matched} index={index} />
+              <DesignCard
+                key={`${matched.design.designId}-${index}`}
+                matched={matched}
+                index={index}
+                orderNumber={order.orderNumber.replace("#", "")}
+              />
             ))}
           </div>
 
@@ -155,7 +160,15 @@ function OrderDetail({
   );
 }
 
-function DesignCard({ matched, index }: { matched: MatchedDesign; index: number }) {
+function DesignCard({
+  matched,
+  index,
+  orderNumber,
+}: {
+  matched: MatchedDesign;
+  index: number;
+  orderNumber: string;
+}) {
   const { design, lineItem } = matched;
   const sku = lineItem?.sku ?? design.productSku ?? "—";
   const productName = lineItem?.title ?? design.productName ?? "Neznámy produkt";
@@ -172,23 +185,6 @@ function DesignCard({ matched, index }: { matched: MatchedDesign; index: number 
         <span className="design-id">Design ID: {design.designId}</span>
       </div>
 
-      {previewImages.length > 0 ? (
-        <div className="preview-grid">
-          {previewImages.map((side) => (
-            <ZoomableImage
-              key={side.sideName}
-              src={side.previewUrl}
-              alt={`${productName} – ${side.sideName}`}
-              label={side.sideName}
-            />
-          ))}
-        </div>
-      ) : (
-        <p className="empty-state">
-          Náhľad zatiaľ nie je pripravený (stav: {design.printFilesStatus ?? "neznámy"}).
-        </p>
-      )}
-
       <div className="design-sku">SKU: {sku}</div>
       <div className="design-meta">
         {productName}
@@ -202,6 +198,55 @@ function DesignCard({ matched, index }: { matched: MatchedDesign; index: number 
           <span>Sklad dodávateľa: {lineItem.stockSuppliers ?? "—"}</span>
         </div>
       )}
+
+      <div className="design-content">
+        {previewImages.length > 0 ? (
+          <div className="preview-grid">
+            {previewImages.map((side) => (
+              <ZoomableImage
+                key={side.sideName}
+                src={side.previewUrl}
+                alt={`${productName} – ${side.sideName}`}
+                label={side.sideName}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="empty-state">
+            Náhľad zatiaľ nie je pripravený (stav: {design.printFilesStatus ?? "neznámy"}).
+          </p>
+        )}
+
+        {design.sides.length > 0 && (
+          <div className="download-buttons">
+            {design.sides.map((side) => {
+              const params = new URLSearchParams({
+                order: orderNumber,
+                designId: design.designId,
+                side: side.sideName,
+              });
+
+              return (
+                <div key={side.sideName} className="download-buttons-side">
+                  <span className="download-buttons-label">{side.sideName}</span>
+                  <a
+                    className="download-button"
+                    href={`/api/download?${params.toString()}&format=dtg`}
+                  >
+                    ⬇ DTG
+                  </a>
+                  <a
+                    className="download-button"
+                    href={`/api/download?${params.toString()}&format=dtf`}
+                  >
+                    ⬇ DTF (orezané)
+                  </a>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
