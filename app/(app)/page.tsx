@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatSlovakDayDate, isOverdue } from "@/lib/format";
 import {
   ShopifyOrder,
   fetchUnfulfilledOrders,
@@ -60,9 +60,12 @@ export default async function HomePage() {
 
   return (
     <>
-      <h2 className="page-title">
-        Nevybavené objednávky{loadError ? "" : ` (${orders.length})`}
-      </h2>
+      <div className="page-header-row">
+        <h2 className="page-title">
+          Nevybavené objednávky{loadError ? "" : ` (${orders.length})`}
+        </h2>
+        <span className="current-date">{formatSlovakDayDate()}</span>
+      </div>
 
       {loadError && <div className="error-banner">{loadError}</div>}
 
@@ -76,16 +79,25 @@ export default async function HomePage() {
             {orders.map((order) => {
               const sapDone = hasSapProcessed(order.tags);
               const carrier = getCarrier(order.tags);
+              const overdue = isOverdue(order.deliveryDeadline);
 
               return (
                 <Link
                   key={order.orderNumber}
                   href={`/orders/${order.orderNumber.replace("#", "")}`}
-                  className={`order-card${sapDone ? "" : " order-card--pending-sap"}`}
+                  className={`order-card${sapDone ? "" : " order-card--pending-sap"}${
+                    overdue ? " order-card--overdue" : ""
+                  }`}
                 >
                   <div className="order-card-top">
                     <span className="order-number">{order.orderNumber}</span>
-                    <span className="order-date">{formatDate(order.createdAt)}</span>
+                    <div className="order-card-dates">
+                      <span className="order-card-date">Vytvorená: {formatDate(order.createdAt)}</span>
+                      <span className={`order-card-date${overdue ? " deadline-overdue" : ""}`}>
+                        Deadline:{" "}
+                        {order.deliveryDeadline ? formatDate(order.deliveryDeadline) : "—"}
+                      </span>
+                    </div>
                   </div>
                   <div className="order-customer">{order.customerName}</div>
                   <div className="order-items-count">{getSkuLabel(order)}</div>
@@ -109,7 +121,8 @@ export default async function HomePage() {
               <thead>
                 <tr>
                   <th>Objednávka</th>
-                  <th>Dátum</th>
+                  <th className="order-table-nowrap-col">Vytvorená</th>
+                  <th className="order-table-nowrap-col">Deadline</th>
                   <th>Zákazník</th>
                   <th className="order-table-sku-col">SKU · KS</th>
                   <th>Dopravca</th>
@@ -120,18 +133,24 @@ export default async function HomePage() {
                 {orders.map((order) => {
                   const sapDone = hasSapProcessed(order.tags);
                   const carrier = getCarrier(order.tags);
+                  const overdue = isOverdue(order.deliveryDeadline);
 
                   return (
                     <tr
                       key={order.orderNumber}
-                      className={sapDone ? "" : "order-row--pending-sap"}
+                      className={`${sapDone ? "" : "order-row--pending-sap"}${
+                        overdue ? " order-row--overdue" : ""
+                      }`}
                     >
                       <td>
                         <Link href={`/orders/${order.orderNumber.replace("#", "")}`}>
                           {order.orderNumber}
                         </Link>
                       </td>
-                      <td>{formatDate(order.createdAt)}</td>
+                      <td className="order-table-nowrap-col">{formatDate(order.createdAt)}</td>
+                      <td className={`order-table-nowrap-col${overdue ? " deadline-overdue" : ""}`}>
+                        {order.deliveryDeadline ? formatDate(order.deliveryDeadline) : "—"}
+                      </td>
                       <td>{order.customerName}</td>
                       <td className="order-table-sku-col">{getSkuLabel(order)}</td>
                       <td>

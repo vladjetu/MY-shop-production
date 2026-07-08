@@ -62,6 +62,8 @@ SHOPIFY_CLIENT_SECRET    # Dev Dashboard app — Client Credentials Grant
 ZAKEKE_CLIENT_ID
 ZAKEKE_CLIENT_SECRET     # S2S OAuth token flow podľa Zakeke docs
 APP_PASSWORD             # heslo do appky
+APP_BASE_URL             # verejná URL appky, napr. https://my-shop-production.vercel.app
+                         # (bez lomítka na konci) — používa ju /api/admin/register-webhook
 ```
 
 ## 3. Zdroje dát a ich role
@@ -84,9 +86,12 @@ skladové metafieldy.
     nevybral → dopravca GLS, v UI označiť ako „GLS (nevybraná pobočka
     Packeta)", aby bolo jasné, že ide o iný prípad než bežné GLS.
   - Žiadny `zasilkovna_*` tag — dopravca GLS (bez poznámky).
-- **Deadline:** v MVP sa nepočíta. Appka pri každom line iteme iba informatívne
-  zobrazí aktuálne hodnoty metafieldov variantu `custom.stock_merchyou` a
-  `custom.stock_suppliers` (sklad MERCHYOU / sklad dodávateľa).
+- **Deadline:** appka pri každom line iteme informatívne zobrazí aktuálne
+  hodnoty metafieldov variantu `custom.stock_merchyou` a `custom.stock_suppliers`
+  (sklad MERCHYOU / sklad dodávateľa). Samotný termín dodania sa počíta a
+  ukladá presne raz — pri vzniku objednávky (webhook) alebo pri jednorazovom
+  backfille — a v zozname/detaile sa už len číta, nikdy neprepočítava pri
+  zobrazení (pozri §5).
 - **Skladové metafieldy a Zakeke klon produktu:** Zakeke pri personalizácii
   vytvorí v Shopify klon objednaného produktu (Product type `zakeke-design`)
   s rovnakým SKU ako originál, ale bez reálnej skladovej zásoby. Skladové
@@ -205,8 +210,49 @@ mieste v kóde (výroba ho ešte doladí).
 
 ## 5. Výpočet deadlinov
 
-Výpočet deadlinov je presunutý do verzie 1.1 (pozri §6). V MVP sa deadliny
-nepočítajú ani nezobrazujú.
+Termín dodania sa vyhodnocuje **presne raz** a natrvalo zapisuje ako order
+metafield — appka ho pri zobrazení už nikdy neprepočítava (`custom.deadline_type`,
+`custom.delivery_deadline`, namespace `custom`, appka má scope `write_orders`).
+
+- **Klasifikácia typu deadlinu:** pre každý line item sa porovná
+  `custom.stock_merchyou` **originálneho** produktu (nájdeného podľa SKU —
+  nie zakeke-design klonu, viď §3.1) so `quantity`. Ak má položka dostatočný
+  sklad (`stock_merchyou >= quantity`), je to 3-dňová položka, inak 12-dňová.
+  Chýbajúci/needitovateľný sklad sa berie konzervatívne ako 12-dňový (radšej
+  dlhší sľúbený termín, než omylom kratší).
+- **Deadline objednávky:** dátum vytvorenia + 12 pracovných dní, ak má
+  objednávka aspoň jednu 12-dňovú položku, inak + 3 pracovné dni.
+- **Pracovné dni:** pondelok–piatok, mínus slovenské štátne sviatky — fixné
+  dátumy (1.1., 6.1., 1.5., 8.5., 5.7., 29.8., 1.9., 15.9., 1.11., 17.11.,
+  24.–26.12.) a Veľký piatok + Veľkonočný pondelok počítané algoritmicky
+  (Meeus/Jones/Butcher). Implementácia: `lib/slovak-calendar.ts`, s unit
+  testami (`lib/slovak-calendar.test.ts`, `npm test`).
+- **Kedy sa počíta:**
+  1. **Webhook** `orders/create` (`app/api/webhooks/orders-create/route.ts`) —
+     overí HMAC podpis (`X-Shopify-Hmac-Sha256`, `SHOPIFY_CLIENT_SECRET`, nad
+     surovým telom requestu), spočíta a zapíše oba metafieldy pri vzniku
+     každej novej objednávky.
+  2. **Backfill** (`app/api/admin/backfill-deadlines/route.ts`, chránené
+     session cookie) — jednorazová/opakovateľná admin akcia, ktorá dopočíta
+     deadline pre existujúce unfulfilled objednávky, ktorým metafield ešte
+     chýba (napr. vznikli pred nasadením webhooku).
+- **Registrácia webhooku:** cez Shopify Admin GraphQL API
+  (`webhookSubscriptionCreate`/`Update`, appka už má funkčnú S2S autentifikáciu
+  — netreba Shopify CLI ani Partner Dashboard), jednorazovo zavolaním
+  `app/api/admin/register-webhook/route.ts` (chránené session cookie,
+  idempotentné). `callbackUrl` sa skladá z env `APP_BASE_URL` (stabilná
+  produkčná doména appky, nie deployment-špecifická URL s hashom).
+- **Zobrazenie:** zoznam objednávok má stĺpce „Vytvorená" a „Deadline"
+  (čítané priamo z metafieldu; chýbajúci metafield → „—"). Objednávky po
+  termíne majú jemné červené pozadie a červený dátum. Vedľa nadpisu je
+  aktuálny deň a dátum po slovensky (`lib/format.ts`).
+  Zoznam (mobile karty aj desktop tabuľka) a detail objednávky majú zámerne
+  **odlišný vizuálny štýl** pre tie isté dva dátumy: zoznam kompaktný
+  (dátumy v rohu karty/stĺpce, jeden riadok na dátum, na rýchle skenovanie
+  veľkého počtu objednávok), detail výraznejší „popisok nad hodnotou" blok
+  (viac priestoru, dôraz na prehľadnosť pri jednej konkrétnej objednávke).
+  Rovnaký komponent na oboch miestach pôsobil ako neúplná kópia, nie ako
+  dve zámerne odlíšené úrovne informácie.
 
 ## 6. Mimo rozsahu MVP (verzia 1.1+)
 
@@ -216,13 +262,8 @@ nepočítajú ani nezobrazujú.
   ako tag/metafield/poznámka v Shopify, appka ho automaticky zobrazí.
 - Druhý e-shop merchshop.com (bez Zakeke) — mimo rozsahu.
 - Push notifikácie, užívateľské účty, história.
-- Deadliny (v1.1): pri vzniku objednávky (Shopify webhook `orders/create`)
-  appka vyhodnotí typ deadlinu — ak `custom.stock_merchyou` >= quantity line
-  itemu, tak 3 pracovné dni, inak 12 — a zapíše ho natrvalo ako order
-  metafield. Deadline sa počíta v pracovných dňoch podľa slovenského
-  kalendára (fixné sviatky + Veľká noc algoritmicky). Zoznam a detail potom
-  zobrazia deadline s farebnou indikáciou, 3-dňové položky zvýraznené,
-  triedenie podľa deadlinu.
+- Triedenie zoznamu podľa deadlinu (namiesto dátumu vytvorenia) a vizuálne
+  odlíšenie 3-dňových položiek priamo v detaile objednávky.
 
 ## 7. Akceptačné kritériá MVP
 
@@ -238,6 +279,10 @@ nepočítajú ani nezobrazujú.
 5. Appka je pohodlne použiteľná na mobile (šírka ~390 px) aj na desktope.
 6. Žiadny API kľúč sa nenachádza vo frontend kóde ani v Git repozitári
    (.env v .gitignore, na Verceli env variables).
+7. Pri vzniku novej objednávky appka automaticky zapíše typ deadlinu a termín
+   dodania ako order metafield (§5); zoznam objednávok zobrazuje „Vytvorená"
+   a „Deadline" čítané z tohto metafieldu, s červeným zvýraznením po termíne,
+   bez prepočtu pri zobrazení.
 
 ## 8. Postup vývoja (odporúčané poradie pre Claude Code)
 
@@ -247,6 +292,7 @@ nepočítajú ani nezobrazujú.
 4. Download endpointy: DTG proxy + DTF trim cez sharp.
    - 4b. Výkon (cache, prefetch, skeleton) a branding (§9).
 5. Doladenie UI podľa spätnej väzby výroby.
+6. Presné deadliny cez webhook `orders/create` + backfill + UI stĺpce (§5).
 
 ## 9. Branding
 

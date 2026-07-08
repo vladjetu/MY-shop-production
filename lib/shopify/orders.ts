@@ -19,6 +19,11 @@ export type ShopifyOrder = {
   tags: string[];
   pickupPointName?: string;
   lineItems: ShopifyLineItem[];
+  // Vypočítané webhookom orders/create (alebo backfillom) a zapísané ako order
+  // metafieldy — appka ich tu len ČÍTA, nikdy sami neprepočítavame pri zobrazení.
+  // null = metafield ešte nie je zapísaný (napr. staršia objednávka pred backfillom).
+  deadlineType: 3 | 12 | null;
+  deliveryDeadline: string | null;
 };
 
 export function hasSapProcessed(tags: string[]): boolean {
@@ -76,6 +81,12 @@ const ORDER_FIELDS = `
     key
     value
   }
+  deadlineType: metafield(namespace: "custom", key: "deadline_type") {
+    value
+  }
+  deliveryDeadline: metafield(namespace: "custom", key: "delivery_deadline") {
+    value
+  }
   lineItems(first: 50) {
     edges {
       node {
@@ -101,6 +112,8 @@ type OrderNode = {
   shippingAddress: { firstName: string | null; lastName: string | null } | null;
   billingAddress: { firstName: string | null; lastName: string | null } | null;
   customAttributes: { key: string; value: string }[];
+  deadlineType: { value: string } | null;
+  deliveryDeadline: { value: string } | null;
   lineItems: {
     edges: {
       node: {
@@ -141,6 +154,9 @@ function mapOrder(node: OrderNode): ShopifyOrder {
     stockSuppliers: null,
   }));
 
+  const deadlineTypeRaw = node.deadlineType?.value ? Number(node.deadlineType.value) : null;
+  const deadlineType = deadlineTypeRaw === 3 || deadlineTypeRaw === 12 ? deadlineTypeRaw : null;
+
   return {
     id: node.id,
     orderNumber: node.name,
@@ -150,12 +166,14 @@ function mapOrder(node: OrderNode): ShopifyOrder {
     tags: node.tags,
     pickupPointName: pickupPointAttribute?.value,
     lineItems,
+    deadlineType,
+    deliveryDeadline: node.deliveryDeadline?.value ?? null,
   };
 }
 
 type StockBySku = Map<string, { stockMerchyou: string | null; stockSuppliers: string | null }>;
 
-async function fetchStockBySku(skus: (string | null)[]): Promise<StockBySku> {
+export async function fetchStockBySku(skus: (string | null)[]): Promise<StockBySku> {
   const result: StockBySku = new Map();
   const uniqueSkus = Array.from(new Set(skus.filter((sku): sku is string => Boolean(sku))));
 

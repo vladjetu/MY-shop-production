@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { formatDate } from "@/lib/format";
+import { formatDate, isOverdue } from "@/lib/format";
 import { MatchedDesign, matchDesignsToLineItems } from "@/lib/match-designs";
 import {
   ShopifyLineItem,
@@ -59,12 +59,26 @@ export default async function OrderDetailPage({
 function OrderHeader({ order }: { order: ShopifyOrder }) {
   const sapDone = hasSapProcessed(order.tags);
   const carrier = getCarrier(order.tags);
+  const overdue = isOverdue(order.deliveryDeadline);
 
   return (
-    <div className="order-detail-header">
+    <div className={`order-detail-header${overdue ? " order-detail-header--overdue" : ""}`}>
       <h2>{order.orderNumber}</h2>
+
+      <div className="order-detail-dates">
+        <div className="detail-stat">
+          <span className="detail-stat-label">Vytvorená</span>
+          <span className="detail-stat-value">{formatDate(order.createdAt)}</span>
+        </div>
+        <div className={`detail-stat${overdue ? " detail-stat--overdue" : ""}`}>
+          <span className="detail-stat-label">Deadline</span>
+          <span className="detail-stat-value">
+            {order.deliveryDeadline ? formatDate(order.deliveryDeadline) : "—"}
+          </span>
+        </div>
+      </div>
+
       <div className="order-detail-meta">
-        <span>{formatDate(order.createdAt)}</span>
         <span>{order.customerName}</span>
         <span
           className={`badge ${

@@ -205,9 +205,23 @@ h3 {
   margin: 0 auto;
 }
 
+.page-header-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 4px 0 16px;
+}
+
 .page-title {
   font-size: 1.1rem;
-  margin: 4px 0 16px;
+  margin: 0;
+}
+
+.current-date {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
 }
 
 /* ---------- Order list: mobile cards ---------- */
@@ -240,7 +254,7 @@ h3 {
 
 .order-card-top {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
 }
@@ -248,11 +262,6 @@ h3 {
 .order-number {
   font-weight: 700;
   font-size: 1.05rem;
-}
-
-.order-date {
-  color: var(--color-text-muted);
-  font-size: 0.85rem;
 }
 
 .order-customer {
@@ -264,6 +273,36 @@ h3 {
   color: var(--color-text-muted);
   font-size: 0.85rem;
   margin-top: 2px;
+}
+
+/* Kompaktný súhrn v zozname — zámerne INÝ (menší, na jeden riadok na dátum)
+   než .detail-stat na detaile objednávky. Zoznam je na rýchle skenovanie
+   veľa riadkov naraz (žiadne 2 riadky navyše na kartu), detail má priestor
+   na plnší "popisok nad hodnotou" formát. Rovnaký vizuálny jazyk by tu pôsobil
+   ako neúplná kópia hlavičky detailu, nie ako svoj vlastný, na mieru urobený prehľad. */
+.order-card-dates {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.order-card-date {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+/* Jediné miesto mimo čierna/biela/šedá/tyrkysová (rovnaká výnimka ako
+   badge--sap-pending) — objednávka po termíne dodania potrebuje upútať pozornosť. */
+.order-card--overdue {
+  background: var(--color-warning-bg);
+}
+
+.deadline-overdue {
+  color: var(--color-warning-text);
+  font-weight: 700;
 }
 
 .order-badges {
@@ -326,10 +365,12 @@ h3 {
   font-size: 0.9rem;
 }
 
-/* Krátky, ale musí ostať na jednom riadku — inak "4 SKU · 4 ks" zalomí
-   nevzhľadne na dve línie. V "auto" table-layout takto prehliadač radšej
-   stlačí širšie stĺpce (Zákazník/Dopravca), nie tento. */
-.order-table-sku-col {
+/* Krátke hodnoty, ale musia ostať na jednom riadku — inak napr. "4 SKU · 4 ks"
+   alebo dátum "20. 7. 2026" zalomí nevzhľadne na dve línie. V "auto"
+   table-layout takto prehliadač radšej stlačí širšie stĺpce (Zákazník/Dopravca),
+   nie tieto. */
+.order-table-sku-col,
+.order-table-nowrap-col {
   white-space: nowrap;
 }
 
@@ -347,6 +388,10 @@ h3 {
 
 .order-table tbody tr.order-row--pending-sap {
   background: #fafafa;
+}
+
+.order-table tbody tr.order-row--overdue {
+  background: var(--color-warning-bg);
 }
 
 @media (min-width: 720px) {
@@ -400,6 +445,43 @@ h3 {
 .order-detail-header h2 {
   margin: 0 0 8px;
   font-size: 1.3rem;
+}
+
+.order-detail-header--overdue {
+  background: var(--color-warning-bg);
+}
+
+/* Dva dátumy vedľa seba potrebujú vlastné popisky (malý veľkými písmenami nad
+   hodnotou) — bez nich by "Vytvorená" a "Dodanie do" boli nerozlíšiteľné dva
+   holé dátumy v jednom riadku. */
+.order-detail-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin: 12px 0 4px;
+}
+
+.detail-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detail-stat-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+}
+
+.detail-stat-value {
+  font-size: 0.95rem;
+}
+
+.detail-stat--overdue .detail-stat-value {
+  color: var(--color-warning-text);
+  font-weight: 700;
 }
 
 .order-detail-meta {

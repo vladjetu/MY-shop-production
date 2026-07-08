@@ -6,10 +6,13 @@ export async function middleware(request: NextRequest) {
 
   // /brand obsahuje len verejné statické assety (logo, fonty) — potrebné aj
   // na neprihlásenej /login stránke, žiadne citlivé dáta.
+  // /api/webhooks volá priamo Shopify (nemá našu session cookie) — chránené je
+  // výhradne HMAC podpisom overeným v samotnom route handleri.
   if (
     pathname.startsWith("/login") ||
     pathname.startsWith("/api/login") ||
-    pathname.startsWith("/brand")
+    pathname.startsWith("/brand") ||
+    pathname.startsWith("/api/webhooks")
   ) {
     return NextResponse.next();
   }
