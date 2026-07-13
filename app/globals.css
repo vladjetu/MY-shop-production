@@ -563,9 +563,12 @@ h3 {
   font-size: 0.9rem;
 }
 
+/* Zvýraznené (nie stlmenou farbou ako ostatné meta-riadky) — počet kusov je
+   to hlavné, čím sa výroba pri rozhodovaní čo/kedy tlačiť riadi. */
 .line-item-qty {
-  font-size: 0.9rem;
-  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-text);
 }
 
 .line-item-stock {
@@ -671,11 +674,6 @@ h3 {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
-}
-
-.design-sku {
-  font-weight: 700;
-  font-size: 1rem;
 }
 
 .design-product-name {

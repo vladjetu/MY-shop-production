@@ -178,15 +178,22 @@ Mobile-first zoznam/karty, na desktope tabuľka. Pre každú objednávku:
 
 ### 4.2 Detail objednávky
 
-Hlavička: číslo, dátum, zákazník, dopravca (+ pobočka Packety),
-tagy, poznámky z objednávky.
+Hlavička: číslo, „Vytvorená"/„Deadline" (§5), zákazník, dopravca (+ pobočka
+Packety), tagy, poznámky z objednávky.
 
-Potom **karta pre každý dizajn** (zo Zakeke):
+Potom sekcia **„Položky (N SKU · M ks spolu)"** — zámerne nie „Dizajny"
+(počíta všetky SKU objednávky, nie len personalizované) — s **kartou pre
+každú položku** (line item, zo Zakeke):
 
+- Hlavička karty: **SKU** (nie poradové „D1", „D2" — to by pri zdieľanom
+  dizajne pôsobilo ako 2 odlišné dizajny, viď nižšie) vľavo, Design ID vpravo
+  pre krížovú kontrolu.
 - Náhľad(y) — obrázky per strana (mockup na tričku, ak sa podarilo načítať;
-  fallback na reálny tlačový súbor), veľké, klikateľné na zväčšenie
-- Design ID, **SKU textilu** (výrazne — spoločný identifikátor so SAP),
-  názov produktu, variant (farba/veľkosť zo Shopify), **množstvo kusov**
+  fallback na reálny tlačový súbor), veľké, klikateľné na zväčšenie.
+- Názov produktu, variant (farba/veľkosť zo Shopify), **množstvo kusov**
+  (zvýraznené tučným písmom — najdôležitejší údaj pre rozhodnutie čo/koľko
+  tlačiť teraz vs. neskôr, napr. pri čiastočnom plnení kvôli chýbajúcemu
+  skladu na inej veľkosti).
 - Hodnoty oboch skladov: `custom.stock_merchyou` (sklad MERCHYOU) a
   `custom.stock_suppliers` (sklad dodávateľa)
 - Pre každú customized stranu (FRONT/BACK/…), na jednom riadku
@@ -200,6 +207,17 @@ Potom **karta pre každý dizajn** (zo Zakeke):
   aby sa nemuselo scrollovať. Overené aj pre 7 strán s najdlhšími názvami
   (napr. „LEFT SH. SLEEVE").
 - Voliteľne (podľa miesta v UI): nenápadný link „Summary PDF (Zakeke)"
+- **Karty sa NEZLUČUJÚ**, aj keď viac SKU zdieľa identický dizajn (napr. rovnaký
+  print aplikovaný na 4 veľkosti jedného produktu — bežné pri Zakeke funkcii
+  "aplikovať na všetky veľkosti", overené na reálnej objednávke #1779: rovnaké
+  Design ID, pixel-identický obsah aj rozmery na všetkých veľkostiach). Dôvod:
+  výroba niekedy tlačí objednávku po častiach (napr. jedna veľkosť chýba na
+  sklade), takže potrebuje vidieť a sťahovať každú SKU samostatne.
+- **Identifikácia karty pri downloade je podľa indexu položky v poli**
+  (`itemIndex` v `/api/download`), **nie podľa Design ID** — viacero položiek
+  môže zdieľať to isté Design ID (vyššie), takže lookup podľa Design ID by
+  vždy vrátil prvý výskyt bez ohľadu na to, ktorú kartu si operátor klikol
+  (nájdené a opravené pri testovaní objednávky #1779).
 
 ### 4.3 Pomenovanie súborov pri downloade
 

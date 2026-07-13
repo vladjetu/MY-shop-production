@@ -130,7 +130,7 @@ async function DesignsSection({ order }: { order: ShopifyOrder }) {
   return (
     <>
       <h3 className="section-title">
-        Dizajny ({order.lineItems.length} SKU · {getTotalQuantity(order)} ks spolu)
+        Položky ({order.lineItems.length} SKU · {getTotalQuantity(order)} ks spolu)
       </h3>
 
       {designsError && <div className="error-banner">{designsError}</div>}
@@ -178,7 +178,7 @@ async function DesignsSection({ order }: { order: ShopifyOrder }) {
 function DesignsSkeleton() {
   return (
     <>
-      <h3 className="section-title">Dizajny</h3>
+      <h3 className="section-title">Položky</h3>
       <div className="design-cards">
         {[1, 2].map((i) => (
           <div key={i} className="design-card skeleton-card" aria-hidden="true">
@@ -214,12 +214,11 @@ function DesignCard({
   return (
     <div className="design-card">
       <div className="design-card-header">
-        <span className="design-index">D{index + 1}</span>
+        <span className="design-index">SKU: {sku}</span>
         <span className="design-id">Design ID: {design.designId}</span>
       </div>
 
       <div className="info-stack">
-        <div className="design-sku">SKU: {sku}</div>
         <div className="design-product-name">{productName}</div>
         {lineItem?.variantTitle && (
           <span className="variant-chip">{lineItem.variantTitle}</span>
@@ -257,7 +256,7 @@ function DesignCard({
             {design.sides.map((side) => {
               const params = new URLSearchParams({
                 order: orderNumber,
-                designId: design.designId,
+                itemIndex: String(index),
                 side: side.sideName,
               });
 

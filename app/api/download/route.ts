@@ -17,12 +17,17 @@ function sanitizeForFilename(value: string): string {
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const orderNumber = searchParams.get("order");
-  const designId = searchParams.get("designId");
+  const itemIndexParam = searchParams.get("itemIndex");
   const sideName = searchParams.get("side");
   const format = searchParams.get("format");
 
-  if (!orderNumber || !designId || !sideName || (format !== "dtg" && format !== "dtf")) {
+  if (!orderNumber || !itemIndexParam || !sideName || (format !== "dtg" && format !== "dtf")) {
     return new NextResponse("Chýbajú alebo sú neplatné parametre requestu.", { status: 400 });
+  }
+
+  const itemIndex = Number(itemIndexParam);
+  if (!Number.isInteger(itemIndex) || itemIndex < 0) {
+    return new NextResponse("Neplatný parameter itemIndex.", { status: 400 });
   }
 
   let order;
@@ -41,24 +46,27 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const designIndex = designs.findIndex((d) => d.designId === designId);
-  if (designIndex === -1) {
+  // Identifikujeme položku podľa jej indexu v poli (zodpovedá karte D{index+1} v UI),
+  // NIE podľa designId — viacero položiek objednávky môže zdieľať to isté Zakeke
+  // designId (napr. rovnaký dizajn aplikovaný na viacero veľkostí), a designId by
+  // preto vždy vrátil prvý výskyt bez ohľadu na to, ktorú kartu si operátor klikol.
+  const design = designs[itemIndex];
+  if (!design) {
     return new NextResponse("Dizajn sa nenašiel.", { status: 404 });
   }
 
-  const design = designs[designIndex];
   const side = design.sides.find((s) => s.sideName === sideName);
   if (!side) {
     return new NextResponse("Táto strana dizajnu neexistuje.", { status: 404 });
   }
 
   const matched = order ? matchDesignsToLineItems(designs, order.lineItems) : [];
-  const matchForThis = matched.find((m) => m.design.designId === designId);
+  const matchForThis = matched[itemIndex] ?? null;
   const sku = sanitizeForFilename(matchForThis?.lineItem?.sku ?? design.productSku ?? "SKU");
   const quantity = matchForThis?.lineItem?.quantity ?? design.quantity;
   const safeSideName = sanitizeForFilename(sideName);
 
-  const filename = `${orderNumber}-D${designIndex + 1}-${sku}-${safeSideName}-${quantity}ks-${format.toUpperCase()}.png`;
+  const filename = `${orderNumber}-D${itemIndex + 1}-${sku}-${safeSideName}-${quantity}ks-${format.toUpperCase()}.png`;
 
   let upstream: Response;
   try {
