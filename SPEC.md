@@ -206,7 +206,12 @@ každú položku** (line item, zo Zakeke):
 
 - Hlavička karty: **SKU** (nie poradové „D1", „D2" — to by pri zdieľanom
   dizajne pôsobilo ako 2 odlišné dizajny, viď nižšie) vľavo, Design ID vpravo
-  pre krížovú kontrolu.
+  pre krížovú kontrolu. Design ID je deväťmiestne číslo — bez zásahu ho iOS
+  Safari niekedy nekonzistentne „rozpoznáva" ako telefónne číslo a mení ho na
+  odkaz s vlastným štýlom/rozmerom, čo pri obsahu tesne na hranici šírky
+  riadku spôsobovalo, že sa hlavička karty pri niektorých položkách zalomila
+  a pri inak rovnako dlhých nie. Vypnuté cez `metadata.formatDetection`
+  (`app/layout.tsx`) pre celú appku.
 - **Checkbox „Vytlačené"** (v1.2), v hlavičke karty hneď vedľa SKU pillu
   (nie na vlastnom riadku — šetrí miesto), vždy plne viditeľný (mimo
   stlmenej časti nižšie — inak by sa po označení ťažšie hľadal na
