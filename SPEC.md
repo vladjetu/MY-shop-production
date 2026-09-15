@@ -216,7 +216,11 @@ každú položku** (line item, zo Zakeke):
   stlmí zvyšok karty (info, náhľady, download tlačidlá — opacity 0.4, teda
   na 40 %), no náhľady aj tlačidlá zostávajú plne funkčné a klikateľné.
   Stav je zdieľaný medzi zariadeniami (zapísaný v Shopify metafielde, §2), nie
-  len lokálne v prehliadači.
+  len lokálne v prehliadači. **Odznačenie (návrat na „nevytlačené") si
+  vyžaduje potvrdenie** v malom okienku („Naozaj chceš odznačiť túto položku
+  ako nevytlačenú?", Áno/Nie, v štýle appky podľa §9) — označenie samotné
+  potvrdenie nepotrebuje. Dôvod: náhodný dotyk pri stroji (napr. v
+  rukaviciach) by inak mohol nechtiac zrušiť už odpracovaný stav.
 - Náhľad(y) — obrázky per strana (mockup na tričku, ak sa podarilo načítať;
   fallback na reálny tlačový súbor), veľké, klikateľné na zväčšenie.
 - Názov produktu, variant (farba/veľkosť zo Shopify), **množstvo kusov**

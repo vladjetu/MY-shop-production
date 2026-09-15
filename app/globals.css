@@ -600,8 +600,13 @@ h3 {
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 10px;
+  /* Na úzkom mobile sa Design ID zalomí pod SKU/checkbox riadok (viď
+     .design-card-header-left) — malý row-gap ich drží vizuálne pri sebe ako
+     jeden "hlavičkový" blok, väčší margin-bottom potom jasne oddelí hlavičku
+     od názvu produktu pod ňou (predtým boli oba rozostupy takmer rovnaké,
+     takže Design ID pôsobilo, akoby patrilo k názvu produktu, nie k hlavičke). */
+  gap: 4px 8px;
+  margin-bottom: 14px;
 }
 
 .design-card-header-left {
@@ -663,6 +668,61 @@ h3 {
 
 .design-card--printed .design-card-body {
   opacity: 0.4;
+}
+
+/* Potvrdzovacie okno pri odznačení "Vytlačené" — rovnaký princíp fixed
+   overlay ako .preview-overlay (ZoomableImage), vyšší z-index pre istotu,
+   keby sa oba nejako prekryli. */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(35, 31, 32, 0.5);
+}
+
+.confirm-dialog {
+  width: 100%;
+  max-width: 320px;
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-align: center;
+}
+
+.confirm-dialog p {
+  margin: 0 0 18px;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.confirm-button {
+  flex: 1;
+  min-height: 44px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.confirm-button--cancel {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.confirm-button--confirm {
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
 }
 
 .preview-grid {

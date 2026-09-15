@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MatchedDesign } from "@/lib/match-designs";
 import { printedItemKey } from "@/lib/shopify/printed-items";
 import { ZoomableImage } from "@/components/ZoomableImage";
@@ -18,16 +18,29 @@ export function DesignCard({
 }) {
   const { design, lineItem } = matched;
   const sku = lineItem?.sku ?? design.productSku ?? "—";
-  const productName = lineItem?.title ?? design.productName ?? "Neznámy produkt";
+  const productName =
+    lineItem?.title ?? design.productName ?? "Neznámy produkt";
   const quantity = lineItem?.quantity ?? design.quantity;
   // Mockup na tričku (ak sa podarilo načítať) je pre výrobu prehľadnejší než holý
   // tlačový súbor — ak by neoficiálne API (viď internal-mockup-previews.ts) zlyhalo,
   // spadneme späť na reálne tlačové súbory, aby náhľad nezmizol úplne.
-  const previewImages = design.mockups.length > 0 ? design.mockups : design.sides;
+  const previewImages =
+    design.mockups.length > 0 ? design.mockups : design.sides;
   const itemKey = printedItemKey(design.productSku, design.designId);
 
   const [printed, setPrinted] = useState(initialPrinted);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Odznačenie (nastavenie na "nevytlačené") si vyžaduje potvrdenie — jednoduchý
+  // dotyk pri stroji (napr. v rukaviciach) by inak mohol náhodou zrušiť už
+  // odpracovaný stav. Označenie ako vytlačené potvrdenie nepotrebuje.
+  const [confirmingUncheck, setConfirmingUncheck] = useState(false);
+  const confirmOverlayRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (confirmingUncheck) {
+      confirmOverlayRef.current?.focus();
+    }
+  }, [confirmingUncheck]);
 
   async function handleToggle(next: boolean) {
     // Optimistický update — checkbox reaguje okamžite, bez čakania na server.
@@ -64,7 +77,16 @@ export function DesignCard({
             <input
               type="checkbox"
               checked={printed}
-              onChange={(event) => handleToggle(event.target.checked)}
+              onChange={(event) => {
+                const next = event.target.checked;
+                if (!next) {
+                  // Checkbox necháme (kontrolovaný komponent) v pôvodnom stave,
+                  // kým používateľ potvrdí v dialógu nižšie.
+                  setConfirmingUncheck(true);
+                  return;
+                }
+                handleToggle(true);
+              }}
             />
             <span>Vytlačené</span>
           </label>
@@ -72,6 +94,46 @@ export function DesignCard({
         <span className="design-id">Design ID: {design.designId}</span>
       </div>
       {saveError && <p className="printed-toggle-error">{saveError}</p>}
+
+      {confirmingUncheck && (
+        <div
+          ref={confirmOverlayRef}
+          className="confirm-overlay"
+          role="dialog"
+          aria-modal="true"
+          tabIndex={-1}
+          onClick={() => setConfirmingUncheck(false)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setConfirmingUncheck(false);
+          }}
+        >
+          <div
+            className="confirm-dialog"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <p>Naozaj chceš označiť túto položku ako nevytlačenú?</p>
+            <div className="confirm-dialog-actions">
+              <button
+                type="button"
+                className="confirm-button confirm-button--cancel"
+                onClick={() => setConfirmingUncheck(false)}
+              >
+                Nie
+              </button>
+              <button
+                type="button"
+                className="confirm-button confirm-button--confirm"
+                onClick={() => {
+                  setConfirmingUncheck(false);
+                  handleToggle(false);
+                }}
+              >
+                Áno
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="design-card-body">
         <div className="info-stack">
@@ -103,7 +165,8 @@ export function DesignCard({
             </div>
           ) : (
             <p className="empty-state">
-              Náhľad zatiaľ nie je pripravený (stav: {design.printFilesStatus ?? "neznámy"}).
+              Náhľad zatiaľ nie je pripravený (stav:{" "}
+              {design.printFilesStatus ?? "neznámy"}).
             </p>
           )}
 
@@ -118,7 +181,9 @@ export function DesignCard({
 
                 return (
                   <div key={side.sideName} className="download-buttons-side">
-                    <span className="download-buttons-label">{side.sideName}</span>
+                    <span className="download-buttons-label">
+                      {side.sideName}
+                    </span>
                     <a
                       className="download-button"
                       href={`/api/download?${params.toString()}&format=dtg`}
