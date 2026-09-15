@@ -207,13 +207,14 @@ každú položku** (line item, zo Zakeke):
 - Hlavička karty: **SKU** (nie poradové „D1", „D2" — to by pri zdieľanom
   dizajne pôsobilo ako 2 odlišné dizajny, viď nižšie) vľavo, Design ID vpravo
   pre krížovú kontrolu.
-- **Checkbox „Vytlačené"** (v1.2), hneď pod hlavičkou karty, vždy plne
-  viditeľný (mimo stlmenej časti nižšie — inak by sa po označení ťažšie
-  hľadal na odznačenie). Dotyková plocha min. 44×44 px. Reaguje okamžite
-  (optimistický update), zápis beží na pozadí; ak zlyhá, checkbox sa vráti
-  a zobrazí sa hláška „Nepodarilo sa uložiť stav. Skús to znova." Označenie
-  vizuálne stlmí zvyšok karty (info, náhľady, download tlačidlá — cca 55–60 %
-  priehľadnosti), no náhľady aj tlačidlá zostávajú plne funkčné a klikateľné.
+- **Checkbox „Vytlačené"** (v1.2), v hlavičke karty hneď vedľa SKU pillu
+  (nie na vlastnom riadku — šetrí miesto), vždy plne viditeľný (mimo
+  stlmenej časti nižšie — inak by sa po označení ťažšie hľadal na
+  odznačenie). Dotyková plocha min. 44×44 px. Reaguje okamžite (optimistický
+  update), zápis beží na pozadí; ak zlyhá, checkbox sa vráti a zobrazí sa
+  hláška „Nepodarilo sa uložiť stav. Skús to znova." Označenie vizuálne
+  stlmí zvyšok karty (info, náhľady, download tlačidlá — opacity 0.4, teda
+  na 40 %), no náhľady aj tlačidlá zostávajú plne funkčné a klikateľné.
   Stav je zdieľaný medzi zariadeniami (zapísaný v Shopify metafielde, §2), nie
   len lokálne v prehliadači.
 - Náhľad(y) — obrázky per strana (mockup na tričku, ak sa podarilo načítať;

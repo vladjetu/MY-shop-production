@@ -54,21 +54,23 @@ export function DesignCard({
   return (
     <div className={`design-card${printed ? " design-card--printed" : ""}`}>
       <div className="design-card-header">
-        <span className="design-index">SKU: {sku}</span>
+        <div className="design-card-header-left">
+          <span className="design-index">SKU: {sku}</span>
+          {/* Checkbox hneď vedľa SKU pillu, nie na vlastnom riadku — šetrí miesto.
+              Zostáva vždy plne viditeľný (mimo stlmeného .design-card-body nižšie),
+              inak by sa po označení ťažšie hľadal na odznačenie. Dotyková plocha
+              min. 44×44 cez padding na .printed-toggle. */}
+          <label className="printed-toggle">
+            <input
+              type="checkbox"
+              checked={printed}
+              onChange={(event) => handleToggle(event.target.checked)}
+            />
+            <span>Vytlačené</span>
+          </label>
+        </div>
         <span className="design-id">Design ID: {design.designId}</span>
       </div>
-
-      {/* Checkbox a jeho label zostávajú vždy plne viditeľné (mimo stlmeného
-          .design-card-body nižšie) — inak by sa ho po označení ťažšie hľadalo
-          na odznačenie. Dotyková plocha min. 44×44 cez padding na .printed-toggle. */}
-      <label className="printed-toggle">
-        <input
-          type="checkbox"
-          checked={printed}
-          onChange={(event) => handleToggle(event.target.checked)}
-        />
-        <span>Vytlačené</span>
-      </label>
       {saveError && <p className="printed-toggle-error">{saveError}</p>}
 
       <div className="design-card-body">
