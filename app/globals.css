@@ -595,17 +595,22 @@ h3 {
   padding: 14px 16px;
 }
 
+/* SKU pill + checkbox + Design ID zmerané reálne (Playwright, Chromium,
+   šírka 412px = Pixel 7A): dostupná šírka v hlavičke karty je len ~346px,
+   samotný obsah (SKU pill + checkbox + medzery + "Design ID: ...") potrebuje
+   338–350px podľa presnej šírky číslic v tom-ktorom SKU/Design ID — teda
+   doslova na hranici. Preto sa pri niektorých položkách zmestilo na 1 riadok
+   a pri inak rovnako dlhých nie (prehliadač láme podľa PRESNÉHO obsahu danej
+   karty, nie podľa šírky obrazovky). Namiesto spoliehania sa na to, či sa to
+   "náhodou" zmestí, je tu pevné pravidlo podľa šírky obrazovky (media query
+   nižšie) — pod 480px VŽDY 2 riadky (Design ID pod SKU/checkboxom), nad tým
+   VŽDY 1 riadok. Jednotné naprieč všetkými položkami aj objednávkami, žiadne
+   výnimky podľa obsahu. */
 .design-card-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  /* Na úzkom mobile sa Design ID zalomí pod SKU/checkbox riadok (viď
-     .design-card-header-left) — malý row-gap ich drží vizuálne pri sebe ako
-     jeden "hlavičkový" blok, väčší margin-bottom potom jasne oddelí hlavičku
-     od názvu produktu pod ňou (predtým boli oba rozostupy takmer rovnaké,
-     takže Design ID pôsobilo, akoby patrilo k názvu produktu, nie k hlavičke). */
-  gap: 4px 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
   margin-bottom: 14px;
 }
 
@@ -613,7 +618,15 @@ h3 {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
+}
+
+@media (min-width: 480px) {
+  .design-card-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
 }
 
 .design-index {
@@ -638,7 +651,7 @@ h3 {
 .printed-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   min-height: 44px;
   padding: 4px 0;
   font-size: 0.85rem;
@@ -646,9 +659,12 @@ h3 {
   cursor: pointer;
 }
 
+/* Menší vizuálny checkbox (bolo 22px) — dotyková plocha min. 44×44 je aj tak
+   zaručená cez min-height + padding na .printed-toggle vyššie (celý label
+   vrátane textu "Vytlačené" je klikateľný), takže sa tým nič nestráca. */
 .printed-toggle input {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   accent-color: var(--color-accent);
   flex-shrink: 0;
 }

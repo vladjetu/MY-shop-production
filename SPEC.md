@@ -204,26 +204,35 @@ Potom sekcia **„Položky (N SKU · M ks spolu)"** — zámerne nie „Dizajny"
 (počíta všetky SKU objednávky, nie len personalizované) — s **kartou pre
 každú položku** (line item, zo Zakeke):
 
-- Hlavička karty: **SKU** (nie poradové „D1", „D2" — to by pri zdieľanom
-  dizajne pôsobilo ako 2 odlišné dizajny, viď nižšie) vľavo, Design ID vpravo
-  pre krížovú kontrolu. Design ID je deväťmiestne číslo — bez zásahu ho iOS
-  Safari niekedy nekonzistentne „rozpoznáva" ako telefónne číslo a mení ho na
-  odkaz s vlastným štýlom/rozmerom, čo pri obsahu tesne na hranici šírky
-  riadku spôsobovalo, že sa hlavička karty pri niektorých položkách zalomila
-  a pri inak rovnako dlhých nie. Vypnuté cez `metadata.formatDetection`
-  (`app/layout.tsx`) pre celú appku.
-- **Checkbox „Vytlačené"** (v1.2), v hlavičke karty hneď vedľa SKU pillu
-  (nie na vlastnom riadku — šetrí miesto), vždy plne viditeľný (mimo
-  stlmenej časti nižšie — inak by sa po označení ťažšie hľadal na
-  odznačenie). Dotyková plocha min. 44×44 px. Reaguje okamžite (optimistický
-  update), zápis beží na pozadí; ak zlyhá, checkbox sa vráti a zobrazí sa
-  hláška „Nepodarilo sa uložiť stav. Skús to znova." Označenie vizuálne
-  stlmí zvyšok karty (info, náhľady, download tlačidlá — opacity 0.4, teda
-  na 40 %), no náhľady aj tlačidlá zostávajú plne funkčné a klikateľné.
-  Stav je zdieľaný medzi zariadeniami (zapísaný v Shopify metafielde, §2), nie
-  len lokálne v prehliadači. **Odznačenie (návrat na „nevytlačené") si
-  vyžaduje potvrdenie** v malom okienku („Naozaj chceš odznačiť túto položku
-  ako nevytlačenú?", Áno/Nie, v štýle appky podľa §9) — označenie samotné
+- Hlavička karty: **SKU** vľavo (nie poradové „D1", „D2" — to by pri
+  zdieľanom dizajne pôsobilo ako 2 odlišné dizajny, viď nižšie), Design ID
+  pre krížovú kontrolu a checkbox „Vytlačené" (v1.2) vedľa SKU pillu.
+  Na širších obrazovkách (od 480px) je všetko na jednom riadku (Design ID
+  vpravo); pod 480px je Design ID vždy na samostatnom riadku pod SKU a
+  checkboxom. Toto prepínanie je **podľa šírky obrazovky (media query), nie
+  podľa obsahu konkrétnej karty** — zámerne: reálne meranie (Playwright,
+  Chromium, šírka 412px = Pixel 7A) ukázalo, že dostupná šírka v hlavičke je
+  len ~346px a obsah (SKU pill + checkbox + Design ID) potrebuje 338–350px
+  podľa presnej šírky číslic v danom SKU/Design ID — teda na hranici. Keby sa
+  zalamovanie nechalo na prehliadači (podľa toho, či sa obsah "náhodou"
+  zmestí), rôzne položky v tej istej objednávke by sa zalamovali rôzne, hoci
+  majú rovnako dlhé SKU aj Design ID — presne to sa aj dialo, kým sa toto
+  neopravilo. (Predtým sme si mylne mysleli, že príčinou je automatické
+  rozpoznávanie telefónnych čísel v iOS Safari — vyvrátené tým, že sa to isté
+  dialo aj na Androide; `metadata.formatDetection` v `app/layout.tsx` je
+  napriek tomu ponechané ako všeobecne rozumné vypnutie tejto automatiky.)
+- **Checkbox „Vytlačené"** vždy plne viditeľný (mimo stlmenej časti nižšie —
+  inak by sa po označení ťažšie hľadal na odznačenie). Dotyková plocha min.
+  44×44 px (samotný vizuálny štvorček je menší, 18px — dotykovú plochu dopĺňa
+  padding na celom labeli). Reaguje okamžite (optimistický update), zápis
+  beží na pozadí; ak zlyhá, checkbox sa vráti a zobrazí sa hláška
+  „Nepodarilo sa uložiť stav. Skús to znova." Označenie vizuálne stlmí
+  zvyšok karty (info, náhľady, download tlačidlá — opacity 0.4, teda na
+  40 %), no náhľady aj tlačidlá zostávajú plne funkčné a klikateľné. Stav je
+  zdieľaný medzi zariadeniami (zapísaný v Shopify metafielde, §2), nie len
+  lokálne v prehliadači. **Odznačenie (návrat na „nevytlačené") si vyžaduje
+  potvrdenie** v malom okienku („Naozaj chceš odznačiť túto položku ako
+  nevytlačenú?", Áno/Nie, v štýle appky podľa §9) — označenie samotné
   potvrdenie nepotrebuje. Dôvod: náhodný dotyk pri stroji (napr. v
   rukaviciach) by inak mohol nechtiac zrušiť už odpracovaný stav.
 - Náhľad(y) — obrázky per strana (mockup na tričku, ak sa podarilo načítať;
