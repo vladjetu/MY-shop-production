@@ -50,7 +50,24 @@ responzívne aj pre desktop. Jazyk UI: slovenčina.
   (Client Credentials Grant, pozri
   https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens/client-credentials-grant).
   Token sa cachuje v pamäti servera a pred expiráciou automaticky obnovuje.
-- **Úložisko:** žiadne (MVP je bezstavové — všetko sa číta live z API).
+- **Úložisko:** appka nemá vlastnú databázu — jediný stav, ktorý appka sama
+  zapisuje, sú Shopify order metafieldy (deadliny, §5, a od v1.2 aj stav
+  „vytlačené", nižšie). Všetko ostatné sa číta live z API pri každom
+  zobrazení.
+- **Stav „vytlačené" (v1.2):** order metafield `custom.printed_items`, typ
+  `json`, hodnota = pole stringov s kľúčmi položiek v tvare
+  `"{SKU}::{DesignID}"` (napr. `"278448::102539159"`). SKU identifikuje kus
+  textilu, Design ID je rozlišovač pre prípad rovnakého SKU vo viacerých
+  položkách s rôznou grafikou — overené na 500 reálnych objednávkach zo
+  Zakeke Orders API, že táto dvojica sa v rámci jednej objednávky nikdy
+  neopakuje (na rozdiel od poradia položiek v poli, ktoré sa preto na
+  identifikáciu nepoužíva). Zápis cez `POST /api/orders/{orderNumber}/printed`
+  (chránené session cookie): prečíta aktuálny zoznam priamo zo Shopify (bez
+  cache), pridá/odoberie kľúč, zapíše späť cez `metafieldsSet`. Toto je
+  read-modify-write bez zámku — ak by dvaja ľudia naraz (v tej istej
+  sekunde) prepli dve rôzne položky tej istej objednávky, jeden zápis môže
+  prepísať druhý. Pre appku bez vlastného úložiska je to akceptované riziko
+  (vzácny prípad, operátor si to všimne a klikne znova), nie chyba.
 - **Obrázky:** knižnica `sharp` na serverovú úpravu PNG (DTF orez).
 - **Prístup:** jednoduché prihlásenie jedným zdieľaným heslom (env variable
   `APP_PASSWORD`), session cookie. Bez užívateľských účtov.
@@ -190,6 +207,15 @@ každú položku** (line item, zo Zakeke):
 - Hlavička karty: **SKU** (nie poradové „D1", „D2" — to by pri zdieľanom
   dizajne pôsobilo ako 2 odlišné dizajny, viď nižšie) vľavo, Design ID vpravo
   pre krížovú kontrolu.
+- **Checkbox „Vytlačené"** (v1.2), hneď pod hlavičkou karty, vždy plne
+  viditeľný (mimo stlmenej časti nižšie — inak by sa po označení ťažšie
+  hľadal na odznačenie). Dotyková plocha min. 44×44 px. Reaguje okamžite
+  (optimistický update), zápis beží na pozadí; ak zlyhá, checkbox sa vráti
+  a zobrazí sa hláška „Nepodarilo sa uložiť stav. Skús to znova." Označenie
+  vizuálne stlmí zvyšok karty (info, náhľady, download tlačidlá — cca 55–60 %
+  priehľadnosti), no náhľady aj tlačidlá zostávajú plne funkčné a klikateľné.
+  Stav je zdieľaný medzi zariadeniami (zapísaný v Shopify metafielde, §2), nie
+  len lokálne v prehliadači.
 - Náhľad(y) — obrázky per strana (mockup na tričku, ak sa podarilo načítať;
   fallback na reálny tlačový súbor), veľké, klikateľné na zväčšenie.
 - Názov produktu, variant (farba/veľkosť zo Shopify), **množstvo kusov**
@@ -276,8 +302,6 @@ metafield — appka ho pri zobrazení už nikdy neprepočítava (`custom.deadlin
 
 ## 6. Mimo rozsahu MVP (verzia 1.1+)
 
-- Stavy zákaziek označované výrobou („v tlači" / „vytlačené", per side) —
-  vyžaduje malé úložisko (Vercel KV), pridá sa vo v1.1.
 - Napojenie na SAP (číslo zákazkového listu). Medzikrok: ak sa číslo objaví
   ako tag/metafield/poznámka v Shopify, appka ho automaticky zobrazí.
 - Druhý e-shop merchshop.com (bez Zakeke) — mimo rozsahu.
@@ -360,3 +384,6 @@ metafield — appka ho pri zobrazení už nikdy neprepočítava (`custom.deadlin
   `orders/create`, jednorazový backfill pre staršie objednávky, stĺpce
   „Vytvorená" a „Deadline" v zozname objednávok (§5, akceptačné kritérium
   §7 bod 7).
+- **v1.2 (rozpracované)** — Checkbox „Vytlačené" pri každej položke v detaile
+  objednávky, zdieľaný medzi zariadeniami cez order metafield
+  `custom.printed_items` (§2, §4.2).

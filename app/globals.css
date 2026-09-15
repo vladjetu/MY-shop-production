@@ -619,6 +619,45 @@ h3 {
   font-size: 0.8rem;
 }
 
+/* Checkbox "Vytlačené" — zámerne MIMO .design-card--printed stlmenia nižšie, aby
+   zostal vždy dobre viditeľný (inak by sa po označení ťažšie hľadal na odznačenie).
+   min-height 44px + padding zabezpečujú dotykovú plochu pre prsty/rukavice pri stroji. */
+.printed-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 4px 0;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.printed-toggle input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+.printed-toggle-error {
+  margin: -4px 0 10px;
+  color: var(--color-warning-text);
+  font-size: 0.8rem;
+}
+
+/* Obsah karty (info, náhľady, download tlačidlá) sa stlmí, keď je položka označená
+   ako vytlačená — ostáva plne funkčný a klikateľný (opacity neblokuje klik), len
+   vizuálne ustúpi do pozadia. Header a checkbox hore zostávajú vždy plné. */
+.design-card-body {
+  transition: opacity 0.15s ease;
+}
+
+.design-card--printed .design-card-body {
+  opacity: 0.58;
+}
+
 .preview-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));

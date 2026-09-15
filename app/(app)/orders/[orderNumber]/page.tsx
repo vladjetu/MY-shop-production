@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { formatDate, isOverdue } from "@/lib/format";
-import { MatchedDesign, matchDesignsToLineItems } from "@/lib/match-designs";
+import { matchDesignsToLineItems } from "@/lib/match-designs";
 import {
   ShopifyLineItem,
   ShopifyOrder,
@@ -11,8 +11,9 @@ import {
   getTotalQuantity,
   hasSapProcessed,
 } from "@/lib/shopify/orders";
+import { printedItemKey } from "@/lib/shopify/printed-items";
 import { fetchOrderDesigns } from "@/lib/zakeke/designs";
-import { ZoomableImage } from "@/components/ZoomableImage";
+import { DesignCard } from "@/components/DesignCard";
 
 export const dynamic = "force-dynamic";
 
@@ -155,6 +156,9 @@ async function DesignsSection({ order }: { order: ShopifyOrder }) {
                 matched={matched}
                 index={index}
                 orderNumber={order.orderNumber.replace("#", "")}
+                initialPrinted={order.printedItemKeys.includes(
+                  printedItemKey(matched.design.productSku, matched.design.designId)
+                )}
               />
             ))}
           </div>
@@ -190,98 +194,6 @@ function DesignsSkeleton() {
         ))}
       </div>
     </>
-  );
-}
-
-function DesignCard({
-  matched,
-  index,
-  orderNumber,
-}: {
-  matched: MatchedDesign;
-  index: number;
-  orderNumber: string;
-}) {
-  const { design, lineItem } = matched;
-  const sku = lineItem?.sku ?? design.productSku ?? "—";
-  const productName = lineItem?.title ?? design.productName ?? "Neznámy produkt";
-  const quantity = lineItem?.quantity ?? design.quantity;
-  // Mockup na tričku (ak sa podarilo načítať) je pre výrobu prehľadnejší než holý
-  // tlačový súbor — ak by neoficiálne API (viď internal-mockup-previews.ts) zlyhalo,
-  // spadneme späť na reálne tlačové súbory, aby náhľad nezmizol úplne.
-  const previewImages = design.mockups.length > 0 ? design.mockups : design.sides;
-
-  return (
-    <div className="design-card">
-      <div className="design-card-header">
-        <span className="design-index">SKU: {sku}</span>
-        <span className="design-id">Design ID: {design.designId}</span>
-      </div>
-
-      <div className="info-stack">
-        <div className="design-product-name">{productName}</div>
-        {lineItem?.variantTitle && (
-          <span className="variant-chip">{lineItem.variantTitle}</span>
-        )}
-        <div className="line-item-qty">Množstvo: {quantity} ks</div>
-
-        {lineItem && (
-          <div className="line-item-stock">
-            <span>Sklad MERCHYOU: {lineItem.stockMerchyou ?? "—"}</span>
-            <span>Sklad dodávateľa: {lineItem.stockSuppliers ?? "—"}</span>
-          </div>
-        )}
-      </div>
-
-      <div className="design-content">
-        {previewImages.length > 0 ? (
-          <div className="preview-grid">
-            {previewImages.map((side) => (
-              <ZoomableImage
-                key={side.sideName}
-                src={side.previewUrl}
-                alt={`${productName} – ${side.sideName}`}
-                label={side.sideName}
-              />
-            ))}
-          </div>
-        ) : (
-          <p className="empty-state">
-            Náhľad zatiaľ nie je pripravený (stav: {design.printFilesStatus ?? "neznámy"}).
-          </p>
-        )}
-
-        {design.sides.length > 0 && (
-          <div className="download-buttons">
-            {design.sides.map((side) => {
-              const params = new URLSearchParams({
-                order: orderNumber,
-                itemIndex: String(index),
-                side: side.sideName,
-              });
-
-              return (
-                <div key={side.sideName} className="download-buttons-side">
-                  <span className="download-buttons-label">{side.sideName}</span>
-                  <a
-                    className="download-button"
-                    href={`/api/download?${params.toString()}&format=dtg`}
-                  >
-                    ⬇ DTG
-                  </a>
-                  <a
-                    className="download-button"
-                    href={`/api/download?${params.toString()}&format=dtf`}
-                  >
-                    ⬇ DTF (orezané)
-                  </a>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
   );
 }
 

@@ -24,6 +24,10 @@ export type ShopifyOrder = {
   // null = metafield ešte nie je zapísaný (napr. staršia objednávka pred backfillom).
   deadlineType: 3 | 12 | null;
   deliveryDeadline: string | null;
+  // Kľúče (SKU::designId, viď lib/shopify/printed-items.ts) položiek označených
+  // výrobou ako vytlačené — metafield custom.printed_items, typ json. Prázdne pole,
+  // ak metafield ešte neexistuje.
+  printedItemKeys: string[];
 };
 
 export function hasSapProcessed(tags: string[]): boolean {
@@ -87,6 +91,9 @@ const ORDER_FIELDS = `
   deliveryDeadline: metafield(namespace: "custom", key: "delivery_deadline") {
     value
   }
+  printedItems: metafield(namespace: "custom", key: "printed_items") {
+    value
+  }
   lineItems(first: 50) {
     edges {
       node {
@@ -114,6 +121,7 @@ type OrderNode = {
   customAttributes: { key: string; value: string }[];
   deadlineType: { value: string } | null;
   deliveryDeadline: { value: string } | null;
+  printedItems: { value: string } | null;
   lineItems: {
     edges: {
       node: {
@@ -129,6 +137,19 @@ type OrderNode = {
     }[];
   };
 };
+
+// Metafield hodnota je JSON pole stringov — ak je poškodená/neočakávaného tvaru
+// (napr. ručná úprava v Shopify admin), radšej sa správame ako pri chýbajúcom
+// metafielde (prázdne pole), než aby appka spadla.
+function parsePrintedItemKeys(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((key): key is string => typeof key === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
 function nameFromAddress(address: { firstName: string | null; lastName: string | null } | null) {
   if (!address) return null;
@@ -168,6 +189,7 @@ function mapOrder(node: OrderNode): ShopifyOrder {
     lineItems,
     deadlineType,
     deliveryDeadline: node.deliveryDeadline?.value ?? null,
+    printedItemKeys: parsePrintedItemKeys(node.printedItems?.value),
   };
 }
 
