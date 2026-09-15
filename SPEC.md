@@ -1,5 +1,7 @@
 # SPEC — Výrobná aplikácia pre eshop MERCHYOU.shop (interný názov: „MY shop production")
 
+Aktuálna verzia: **v1.1**
+
 ## 1. Cieľ
 
 Webová aplikácia pre tím výroby (tlač textilu). Nahrádza dnešný pomalý proces
@@ -346,3 +348,15 @@ metafield — appka ho pri zobrazení už nikdy neprepočítava (`custom.deadlin
   variant, množstvo, sklady) používa spoločný `.info-stack` wrapper s
   jednotným rozostupom (flex `gap`) namiesto ručne ladeného `margin-top`
   na každom riadku.
+
+## 10. História verzií
+
+- **v1.0** — MVP podľa akceptačných kritérií §7, body 1–6: prihlásenie
+  heslom, zoznam unfulfilled objednávok zo Shopify (tagy SAP/dopravca),
+  detail objednávky s dizajnmi a náhľadmi zo Zakeke, samostatný download
+  DTG/DTF per strana, mobile-first UI, žiadne API kľúče v kóde/repozitári.
+- **v1.1** — Presné deadliny: výpočet a zápis `custom.deadline_type` /
+  `custom.delivery_deadline` pri vzniku objednávky cez webhook
+  `orders/create`, jednorazový backfill pre staršie objednávky, stĺpce
+  „Vytvorená" a „Deadline" v zozname objednávok (§5, akceptačné kritérium
+  §7 bod 7).
