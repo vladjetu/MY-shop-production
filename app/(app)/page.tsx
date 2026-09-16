@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { formatDate, formatSlovakDayDate, isOverdue } from "@/lib/format";
+import { formatSlovakDayDate, isOverdue } from "@/lib/format";
 import {
   ShopifyOrder,
   fetchUnfulfilledOrders,
@@ -9,6 +8,7 @@ import {
   hasSapProcessed,
 } from "@/lib/shopify/orders";
 import { fetchOrderDesigns, fetchOrderNumbersWithDesigns } from "@/lib/zakeke/designs";
+import { OrdersList, OrderRow } from "@/components/OrdersList";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +58,26 @@ export default async function HomePage() {
     return `${order.lineItems.length} SKU · ${getTotalQuantity(order)} ks`;
   }
 
+  // Triedenie/vyhľadávanie sa rieši na klientovi (rádovo desiatky objednávok, ďalší
+  // request na server by bol zbytočný) — sem sa preto pripraví len obyčajné,
+  // serializovateľné pole (žiadne funkcie/Set), ktoré prevezme klientský komponent.
+  const orderRows: OrderRow[] = orders.map((order) => {
+    const bareNumber = order.orderNumber.replace("#", "");
+    return {
+      orderNumber: order.orderNumber,
+      orderNumberValue: Number(bareNumber),
+      href: `/orders/${bareNumber}`,
+      createdAt: order.createdAt,
+      customerName: order.customerName,
+      skuLabel: getSkuLabel(order),
+      carrier: getCarrier(order.tags),
+      carrierLabel: getCarrierLabel(order.tags, order.pickupPointName),
+      sapDone: hasSapProcessed(order.tags),
+      deliveryDeadline: order.deliveryDeadline,
+      overdue: isOverdue(order.deliveryDeadline),
+    };
+  });
+
   return (
     <>
       <div className="page-header-row">
@@ -73,106 +93,7 @@ export default async function HomePage() {
         <p className="empty-state">Žiadne nevybavené objednávky.</p>
       )}
 
-      {!loadError && orders.length > 0 && (
-        <>
-          <div className="order-cards">
-            {orders.map((order) => {
-              const sapDone = hasSapProcessed(order.tags);
-              const carrier = getCarrier(order.tags);
-              const overdue = isOverdue(order.deliveryDeadline);
-
-              return (
-                <Link
-                  key={order.orderNumber}
-                  href={`/orders/${order.orderNumber.replace("#", "")}`}
-                  className={`order-card${sapDone ? "" : " order-card--pending-sap"}${
-                    overdue ? " order-card--overdue" : ""
-                  }`}
-                >
-                  <div className="order-card-top">
-                    <span className="order-number">{order.orderNumber}</span>
-                    <div className="order-card-dates">
-                      <span className="order-card-date">Vytvorená: {formatDate(order.createdAt)}</span>
-                      <span className={`order-card-date${overdue ? " deadline-overdue" : ""}`}>
-                        Deadline:{" "}
-                        {order.deliveryDeadline ? formatDate(order.deliveryDeadline) : "—"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="order-customer">{order.customerName}</div>
-                  <div className="order-items-count">{getSkuLabel(order)}</div>
-                  <div className="order-badges">
-                    <span
-                      className={`badge ${
-                        carrier === "Packeta" ? "badge--carrier-zas" : "badge--carrier-gls"
-                      }`}
-                    >
-                      {getCarrierLabel(order.tags, order.pickupPointName)}
-                    </span>
-                    {!sapDone && <span className="badge badge--sap-pending">čaká na SAP</span>}
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-
-          <div className="order-table-wrapper">
-            <table className="order-table">
-              <thead>
-                <tr>
-                  <th>Objednávka</th>
-                  <th className="order-table-nowrap-col">Vytvorená</th>
-                  <th className="order-table-nowrap-col">Deadline</th>
-                  <th>Zákazník</th>
-                  <th className="order-table-sku-col">SKU · KS</th>
-                  <th>Dopravca</th>
-                  <th>SAP</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((order) => {
-                  const sapDone = hasSapProcessed(order.tags);
-                  const carrier = getCarrier(order.tags);
-                  const overdue = isOverdue(order.deliveryDeadline);
-
-                  return (
-                    <tr
-                      key={order.orderNumber}
-                      className={`${sapDone ? "" : "order-row--pending-sap"}${
-                        overdue ? " order-row--overdue" : ""
-                      }`}
-                    >
-                      <td>
-                        <Link href={`/orders/${order.orderNumber.replace("#", "")}`}>
-                          {order.orderNumber}
-                        </Link>
-                      </td>
-                      <td className="order-table-nowrap-col">{formatDate(order.createdAt)}</td>
-                      <td className={`order-table-nowrap-col${overdue ? " deadline-overdue" : ""}`}>
-                        {order.deliveryDeadline ? formatDate(order.deliveryDeadline) : "—"}
-                      </td>
-                      <td>{order.customerName}</td>
-                      <td className="order-table-sku-col">{getSkuLabel(order)}</td>
-                      <td>
-                        <span
-                          className={`badge ${
-                            carrier === "Packeta" ? "badge--carrier-zas" : "badge--carrier-gls"
-                          }`}
-                        >
-                          {getCarrierLabel(order.tags, order.pickupPointName)}
-                        </span>
-                      </td>
-                      <td>
-                        {sapDone ? "✓" : <span className="badge badge--sap-pending">čaká na SAP</span>}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
+      {!loadError && orders.length > 0 && <OrdersList orders={orderRows} />}
     </>
   );
 }

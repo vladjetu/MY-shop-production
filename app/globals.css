@@ -224,6 +224,77 @@ h3 {
   font-size: 0.85rem;
 }
 
+/* ---------- Zoznam objednávok: nástrojová lišta (hľadanie/triedenie/reset) ---------- */
+
+.order-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.order-search-input {
+  flex: 1 1 160px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 300;
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+.order-search-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+/* Triedenie na mobile: jeden kompaktný natívny select (pole + smer spolu v texte
+   jednej možnosti) namiesto radu prepínačov — veľký, dotykovo spoľahlivý picker
+   zadarmo od OS, žiadna nejednoznačnosť "v akom smere to práve je". Na desktope
+   (od 720px, viď media query nižšie) sa skryje, triedenie tam ovládajú klikateľné
+   hlavičky stĺpcov tabuľky namiesto neho. */
+.sort-select {
+  flex: 1 1 160px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 300;
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+.reset-filters-button {
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.reset-filters-button:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+@media (min-width: 720px) {
+  .sort-select {
+    display: none;
+  }
+}
+
 /* ---------- Order list: mobile cards ---------- */
 
 .order-cards {
@@ -233,19 +304,32 @@ h3 {
 }
 
 .order-card {
+  position: relative;
   display: block;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   padding: 14px 16px;
-  text-decoration: none;
-  color: inherit;
   transition: border-color 0.15s ease;
 }
 
+/* :hover/:focus-within na kontajneri reaguje na celú plochu karty, aj keď je
+   celá karta technicky prekrytá .row-link-overlay (viď nižšie) — nezáleží, ktorý
+   konkrétny prvok má vrchný z-index, kurzor/focus stále leží "vnútri" karty. */
 .order-card:hover,
-.order-card:focus-visible {
+.order-card:focus-within {
   border-color: var(--color-accent);
+}
+
+/* Neviditeľný odkaz cez celú plochu riadku/karty — zabezpečuje klik kdekoľvek
+   (aj stredný klik/Ctrl+klik/pravý klik, keďže je to skutočný <a href>, nie
+   onClick). Vytiahnutý z klávesovej navigácie (tabIndex + aria-hidden), lebo
+   duplicitný cieľ bez zmysluplného textu by len zbytočne naviac otravoval
+   klávesnicu/čítačku — tú istú destináciu ponúka .order-number nižšie. */
+.row-link-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
 }
 
 .order-card--pending-sap {
@@ -259,9 +343,16 @@ h3 {
   gap: 8px;
 }
 
+/* Vlastný <a> navrchu (vyšší z-index nad .row-link-overlay) — jediné miesto
+   v karte, kde myš "vidí" skutočný text pod sebou (dá sa označiť/skopírovať),
+   a jediný focusovateľný/čitateľný cieľ pre klávesnicu a čítačky obrazovky. */
 .order-number {
+  position: relative;
+  z-index: 2;
+  display: inline-block;
   font-weight: 700;
   font-size: 1.05rem;
+  text-decoration: none;
 }
 
 .order-customer {
@@ -380,6 +471,53 @@ h3 {
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.02em;
+}
+
+/* Klikateľná hlavička stĺpca (Objednávka/Vytvorená/Deadline) — tlačidlo bez
+   vlastného vzhľadu, len prevezme štýl z .order-table th okolo seba. */
+.sort-header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sort-header:hover {
+  color: var(--color-accent);
+}
+
+.sort-arrow {
+  margin-left: 2px;
+  color: var(--color-text);
+}
+
+/* position:relative na <tr> + position:absolute (inset:0) na .row-link-overlay
+   vnútri prvej bunky — bunka samotná zostáva position:static, takže sa odkaz
+   "kontajneruje" až voči <tr> a roztiahne sa cez celý riadok, nielen prvú bunku. */
+.order-table tbody tr {
+  position: relative;
+}
+
+.order-table tbody tr:hover,
+.order-table tbody tr:focus-within {
+  background: var(--color-bg);
+}
+
+.order-number-cell-link {
+  position: relative;
+  z-index: 2;
+  display: inline-block;
+  font-weight: 700;
+  text-decoration: none;
 }
 
 .order-table tbody tr:last-child td {
