@@ -21,6 +21,10 @@ export function ProductionNote({
   const [text, setText] = useState(initialNote);
   const [status, setStatus] = useState<SaveStatus>("idle");
   const [conflictNote, setConflictNote] = useState<string | null>(null);
+  // Čas posledného úspešného uloženia — zobrazuje sa pri "Uložené", aby status
+  // pôsobil ako trvalá informácia o poli ("naposledy uložené o..."), nie ako
+  // jednorazové oznámenie, ktoré "zabudlo zmiznúť".
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
 
   // baseline = posledná hodnota, o ktorej vieme, že je zapísaná na serveri —
   // slúži na rozpoznanie súbežnej editácie (viď handleSave nižšie) aj na to,
@@ -59,18 +63,23 @@ export function ProductionNote({
     setStatus("saving");
 
     try {
-      const response = await fetch(`/api/orders/${orderNumber}/production-note`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          note: noteToSave,
-          expectedBaseline: force ? undefined : baselineRef.current,
-          force,
-        }),
-      });
+      const response = await fetch(
+        `/api/orders/${orderNumber}/production-note`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            note: noteToSave,
+            expectedBaseline: force ? undefined : baselineRef.current,
+            force,
+          }),
+        },
+      );
 
       if (response.status === 409) {
-        const data = (await response.json().catch(() => null)) as { currentNote?: string } | null;
+        const data = (await response.json().catch(() => null)) as {
+          currentNote?: string;
+        } | null;
         setConflictNote(data?.currentNote ?? "");
         setStatus("idle");
         return;
@@ -83,6 +92,7 @@ export function ProductionNote({
       baselineRef.current = noteToSave;
       setConflictNote(null);
       setStatus("saved");
+      setSavedAt(new Date());
     } catch {
       setStatus("error");
     }
@@ -124,7 +134,7 @@ export function ProductionNote({
       });
       navigator.sendBeacon?.(
         `/api/orders/${orderNumber}/production-note`,
-        new Blob([payload], { type: "application/json" })
+        new Blob([payload], { type: "application/json" }),
       );
       // sendBeacon je "fire-and-forget" (žiadna odpoveď) — konflikt sa tu
       // nedá rozpoznať, len pri ďalšom uložení z tejto alebo inej stránky.
@@ -132,7 +142,8 @@ export function ProductionNote({
     }
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderNumber]);
 
@@ -151,14 +162,21 @@ export function ProductionNote({
 
   function statusLabel(): string | null {
     if (status === "saving") return "Ukladá sa…";
-    if (status === "saved") return "Uložené";
-    if (status === "error") return "Nepodarilo sa uložiť poznámku. Skús to znova.";
+    if (status === "saved") {
+      const time = savedAt?.toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit" });
+      return time ? `Uložené · ${time}` : "Uložené";
+    }
+    if (status === "error")
+      return "Nepodarilo sa uložiť poznámku. Skús to znova.";
     return null;
   }
 
   return (
     <div className="production-note">
-      <label className="production-note-label" htmlFor="production-note-textarea">
+      <label
+        className="production-note-label"
+        htmlFor="production-note-textarea"
+      >
         Poznámka výroba
       </label>
       <textarea
@@ -166,11 +184,15 @@ export function ProductionNote({
         ref={textareaRef}
         className="production-note-textarea"
         rows={2}
-        placeholder="Poznámka pre výrobu (napr. stav rozpracovanosti, upozornenie)…"
+        placeholder="Poznámka ohľadom výroby (napr. kedy príde textil, alebo ako sa tlačí...)"
         value={text}
         onChange={(event) => {
           setText(event.target.value);
-          setStatus("idle");
+          // Predošlý "Uložené" necháme (mierne zastaraný, ale stále pravdivý)
+          // viditeľný, kým sa reálne nezačne nové ukladanie — okamžité mazanie
+          // pri každom písmene pôsobilo ako zbytočné blikanie. Chybovú hlášku
+          // naopak zmažeme hneď, nech pri oprave textu nevisí zastarané "zlyhalo".
+          if (status === "error") setStatus("idle");
           scheduleSave(event.target.value);
         }}
         onBlur={flushPendingSave}
@@ -180,23 +202,30 @@ export function ProductionNote({
         {status === "error" ? (
           <span className="production-note-status--error">
             {statusLabel()}{" "}
-            <button type="button" className="production-note-retry" onClick={flushPendingSave}>
+            <button
+              type="button"
+              className="production-note-retry"
+              onClick={flushPendingSave}
+            >
               Skúsiť znova
             </button>
           </span>
         ) : (
-          statusLabel() && <span className="production-note-status--ok">{statusLabel()}</span>
+          statusLabel() && (
+            <span className="production-note-status--ok">{statusLabel()}</span>
+          )
         )}
       </div>
 
       {conflictNote !== null && (
         <div className="production-note-conflict">
           <p>
-            Poznámka bola medzitým zmenená inde (pravdepodobne iným zariadením). Tvoje rozpísané
-            zmeny sa neuložili.
+            Poznámka bola medzitým zmenená inde (pravdepodobne iným zariadením).
+            Tvoje rozpísané zmeny sa neuložili.
           </p>
           <p className="production-note-conflict-value">
-            Aktuálna verzia na serveri: {conflictNote.trim().length > 0 ? `„${conflictNote}"` : "(prázdna)"}
+            Aktuálna verzia na serveri:{" "}
+            {conflictNote.trim().length > 0 ? `„${conflictNote}"` : "(prázdna)"}
           </p>
           <div className="production-note-conflict-actions">
             <button
@@ -206,6 +235,8 @@ export function ProductionNote({
                 setText(conflictNote);
                 baselineRef.current = conflictNote;
                 setConflictNote(null);
+                setStatus("saved");
+                setSavedAt(new Date());
               }}
             >
               Načítať aktuálnu verziu
