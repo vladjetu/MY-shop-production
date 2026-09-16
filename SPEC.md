@@ -71,6 +71,13 @@ responzívne aj pre desktop. Jazyk UI: slovenčina.
 - **Poznámka výroba (v1.2):** order metafield `custom.production_note`, typ
   `multi_line_text_field` — voľný text, ktorý si výroba sama píše k
   objednávke (interné, nesúvisí so zákazníckou poznámkou z checkoutu, §4.2).
+  **Výhradne interné pole, zákazník ho nikdy nevidí** — zapisuje sa len ako
+  order metafield cez Admin API (`metafieldsSet`), nikdy do `order.note` ani
+  `note_attributes`. Appka preň nevytvára žiadnu metafield definition, takže
+  nemá (a nesmie dostať) `storefront`/`customer-account` prístup — bez
+  explicitnej definície s takýmto prístupom je metafield automaticky
+  viditeľný len v Admin API, nie cez Storefront API, Shop app ani e-mailové
+  notifikácie zákazníkovi.
   Prázdny text sa nezapisuje ako prázdny reťazec (Shopify text metafieldy ho
   odmietajú), ale metafield sa rovno zmaže cez `metafieldsDelete` — chýbajúci
   metafield má rovnaký význam ako prázdna poznámka. Zápis cez
