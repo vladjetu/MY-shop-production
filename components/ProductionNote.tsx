@@ -163,8 +163,14 @@ export function ProductionNote({
   function statusLabel(): string | null {
     if (status === "saving") return "Ukladá sa…";
     if (status === "saved") {
-      const time = savedAt?.toLocaleTimeString("sk-SK", { hour: "2-digit", minute: "2-digit" });
-      return time ? `Uložené · ${time}` : "Uložené";
+      const dateTime = savedAt?.toLocaleString("sk-SK", {
+        day: "numeric",
+        month: "numeric",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      return dateTime ? `Uložené · ${dateTime}` : "Uložené";
     }
     if (status === "error")
       return "Nepodarilo sa uložiť poznámku. Skús to znova.";
