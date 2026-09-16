@@ -68,6 +68,20 @@ responzívne aj pre desktop. Jazyk UI: slovenčina.
   sekunde) prepli dve rôzne položky tej istej objednávky, jeden zápis môže
   prepísať druhý. Pre appku bez vlastného úložiska je to akceptované riziko
   (vzácny prípad, operátor si to všimne a klikne znova), nie chyba.
+- **Poznámka výroba (v1.2):** order metafield `custom.production_note`, typ
+  `multi_line_text_field` — voľný text, ktorý si výroba sama píše k
+  objednávke (interné, nesúvisí so zákazníckou poznámkou z checkoutu, §4.2).
+  Prázdny text sa nezapisuje ako prázdny reťazec (Shopify text metafieldy ho
+  odmietajú), ale metafield sa rovno zmaže cez `metafieldsDelete` — chýbajúci
+  metafield má rovnaký význam ako prázdna poznámka. Zápis cez
+  `POST /api/orders/{orderNumber}/production-note` (chránené session cookie),
+  s voliteľnou detekciou súbežnej editácie: klient posiela aj `expectedBaseline`
+  (hodnotu, z ktorej vychádzal), server ju porovná s aktuálnou hodnotou na
+  Shopify a pri nezhode vráti 409 namiesto tichého prepísania (appka nemá
+  užívateľské účty, takže dvaja ľudia môžu editovať tú istú poznámku naraz;
+  ide o kontrolu pred zápisom, nie o atomický zámok — úzke okno medzi
+  kontrolou a zápisom teoreticky zostáva). Detaily UI (debounce, ukladanie pri
+  odchode zo stránky) v §4.2.
 - **Obrázky:** knižnica `sharp` na serverovú úpravu PNG (DTF orez).
 - **Prístup:** jednoduché prihlásenie jedným zdieľaným heslom (env variable
   `APP_PASSWORD`), session cookie. Bez užívateľských účtov.
@@ -198,7 +212,39 @@ Mobile-first zoznam/karty, na desktope tabuľka. Pre každú objednávku:
 ### 4.2 Detail objednávky
 
 Hlavička: číslo, „Vytvorená"/„Deadline" (§5), zákazník, dopravca (+ pobočka
-Packety), tagy, poznámky z objednávky.
+Packety), tagy, **„Poznámka Zákazník:"** — ak je vyplnená. Zdroj: štandardné
+Shopify pole `Order.note` — v praxi ide o poznámku, ktorú si zákazník napísal
+sám do poľa poznámky na stránke pokladne (checkout) pri objednávke (overené
+na reálnych dátach: obsahuje typicky konkrétne pokyny k tlači alebo otázky
+zákazníka, napr. „Stihame tlac do 25.9.?"), nie o interný štítok od
+zamestnanca ani o `customAttributes` (to sú len údaje k výdajnému miestu
+Packety). Appka toto pole nikdy nezapisuje, len číta.
+
+**Poznámka výroba (v1.2)** — samostatný blok hneď nad sekciou „Položky",
+editovateľné textové pole pre internú poznámku výroby (nesúvisí so
+zákazníckou poznámkou vyššie). V prázdnom stave nízke (2 riadky), výška
+rastie automaticky podľa obsahu bez vnútorného scrollovania. Ukladanie:
+automaticky ~1,5s po tom, čo používateľ prestane písať (debounce — kratšie by
+zbytočne zaťažovalo Shopify Admin API zápismi na každé slovo, dlhšie
+zväčšuje riziko straty rozpísaného textu), istotne aj pri opustení poľa
+(blur). Viditeľný stav „Ukladá sa…"/„Uložené"/chybová hláška s možnosťou
+skúsiť znova (text sa pri chybe nezahadzuje). Pri odchode zo stránky sa
+poznámka ukladá troma spôsobmi súčasne, podľa toho, ako presne k odchodu
+dôjde: `visibilitychange` (prepnutie na inú appku/kartu, zamknutie
+obrazovky — spoľahlivejšie než `beforeunload` na mobile, kde sa
+`beforeunload` často vôbec nespustí) cez `navigator.sendBeacon` (funguje aj
+tesne pred zatvorením stránky, na rozdiel od bežného `fetch`, ktorý môže byť
+prehliadačom prerušený skôr, než request odíde); odpojenie komponentu pri
+klientskej navigácii (napr. „Späť na zoznam" — nespustí ani
+`beforeunload`, ani `visibilitychange`, keďže dokument sa nezatvára).
+**Detekcia súbežnej editácie:** appka nemá užívateľské účty, takže dvaja ľudia
+môžu písať do tej istej poznámky naraz. Zámky appka nepoužíva (vyžadovalo by
+vlastné úložisko), ale rozpozná konflikt — klient si pri načítaní zapamätá
+poslednú známu hodnotu a pri každom zápise ju pošle na porovnanie s aktuálnou
+hodnotou na Shopify (§2); ak sa líšia, appka namiesto tichého prepísania
+upozorní a ponúkne „Načítať aktuálnu verziu" alebo „Použiť moju verziu".
+(Cez `sendBeacon` sa konflikt rozpoznať nedá — „fire-and-forget", žiadna
+odpoveď — zistí sa až pri ďalšom zápise.)
 
 Potom sekcia **„Položky (N SKU · M ks spolu)"** — zámerne nie „Dizajny"
 (počíta všetky SKU objednávky, nie len personalizované) — s **kartou pre
@@ -405,4 +451,7 @@ metafield — appka ho pri zobrazení už nikdy neprepočítava (`custom.deadlin
   §7 bod 7).
 - **v1.2 (rozpracované)** — Checkbox „Vytlačené" pri každej položke v detaile
   objednávky, zdieľaný medzi zariadeniami cez order metafield
-  `custom.printed_items` (§2, §4.2).
+  `custom.printed_items` (§2, §4.2). Premenovanie „Poznámka:" na „Poznámka
+  Zákazník:" pre jasné odlíšenie od nového editovateľného poľa „Poznámka
+  výroba" (interná poznámka výroby, order metafield `custom.production_note`,
+  autosave s detekciou súbežnej editácie — §2, §4.2).

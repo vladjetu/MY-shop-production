@@ -28,6 +28,10 @@ export type ShopifyOrder = {
   // výrobou ako vytlačené — metafield custom.printed_items, typ json. Prázdne pole,
   // ak metafield ešte neexistuje.
   printedItemKeys: string[];
+  // Interná poznámka výroby (v1.2) — metafield custom.production_note, typ
+  // multi_line_text_field. Prázdny reťazec, ak metafield neexistuje (nie null,
+  // nech sa dá priamo použiť ako počiatočná hodnota textarea bez null-checkov).
+  productionNote: string;
 };
 
 export function hasSapProcessed(tags: string[]): boolean {
@@ -94,6 +98,9 @@ const ORDER_FIELDS = `
   printedItems: metafield(namespace: "custom", key: "printed_items") {
     value
   }
+  productionNote: metafield(namespace: "custom", key: "production_note") {
+    value
+  }
   lineItems(first: 50) {
     edges {
       node {
@@ -122,6 +129,7 @@ type OrderNode = {
   deadlineType: { value: string } | null;
   deliveryDeadline: { value: string } | null;
   printedItems: { value: string } | null;
+  productionNote: { value: string } | null;
   lineItems: {
     edges: {
       node: {
@@ -190,6 +198,7 @@ function mapOrder(node: OrderNode): ShopifyOrder {
     deadlineType,
     deliveryDeadline: node.deliveryDeadline?.value ?? null,
     printedItemKeys: parsePrintedItemKeys(node.printedItems?.value),
+    productionNote: node.productionNote?.value ?? "",
   };
 }
 

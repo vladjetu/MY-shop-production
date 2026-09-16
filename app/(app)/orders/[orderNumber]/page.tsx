@@ -14,6 +14,7 @@ import {
 import { printedItemKey } from "@/lib/shopify/printed-items";
 import { fetchOrderDesigns } from "@/lib/zakeke/designs";
 import { DesignCard } from "@/components/DesignCard";
+import { ProductionNote } from "@/components/ProductionNote";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,10 @@ export default async function OrderDetailPage({
       {!loadError && order && (
         <>
           <OrderHeader order={order} />
+          <ProductionNote
+            orderNumber={order.orderNumber.replace("#", "")}
+            initialNote={order.productionNote}
+          />
           {/* Hlavička (Shopify) sa vykreslí hneď; dizajny zo Zakeke (pomalší mockup
               dopyt) sa doťahujú na pozadí a kým nie sú hotové, zobrazí sa skeleton. */}
           <Suspense fallback={<DesignsSkeleton />}>
@@ -91,7 +96,7 @@ function OrderHeader({ order }: { order: ShopifyOrder }) {
         {!sapDone && <span className="badge badge--sap-pending">čaká na SAP</span>}
       </div>
 
-      {order.note && <p className="order-note">Poznámka: {order.note}</p>}
+      {order.note && <p className="order-note">Poznámka Zákazník: {order.note}</p>}
 
       {order.tags.length > 0 && (
         <div className="order-tags">
