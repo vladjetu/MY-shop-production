@@ -51,6 +51,12 @@ export function ProductionNote({
 
   useEffect(() => {
     resizeTextarea();
+    // Rovnaký text sa pri užšej šírke zalomí na viac riadkov a potrebuje viac
+    // miesta — bez tohto by po zmene šírky okna (napr. otočenie telefónu na
+    // šírku, nie len zmena veľkosti okna na desktope) zostala platiť výška
+    // vypočítaná pre pôvodnú šírku a spodok textu by vyzeral orezaný.
+    window.addEventListener("resize", resizeTextarea);
+    return () => window.removeEventListener("resize", resizeTextarea);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
