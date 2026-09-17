@@ -123,7 +123,7 @@ skladové metafieldy.
   - `zasilkovna_selected` — dopravca Packeta (+ pobočka v order metafields /
     additional details `PickupPointName`).
   - `zasilkovna_unselected` — zákazník mal na výber Packetu, ale pobočku
-    nevybral → dopravca GLS, v UI označiť ako „GLS (nevybraná pobočka
+    nevybral → dopravca GLS, v UI označiť ako „GLS (nevybraná
     Packeta)", aby bolo jasné, že ide o iný prípad než bežné GLS.
   - Žiadny `zasilkovna_*` tag — dopravca GLS (bez poznámky).
 - **Deadline:** appka pri každom line iteme informatívne zobrazí aktuálne
@@ -211,7 +211,9 @@ Mobile-first zoznam/karty, na desktope tabuľka. Pre každú objednávku:
   SKU môže výrobu zmiasť, keďže jedno SKU môže mať quantity > 1. Ak objednávka
   nemá v Zakeke žiadnu personalizáciu (čistý textil), namiesto toho sa zobrazí
   „Bez potlače".
-- Badge dopravcu: Packeta / GLS
+- Badge dopravcu: Packeta / GLS — **bez pobočky Packety** (v1.2, skôr sa
+  vypisovala aj v zozname; teraz už len v detaile objednávky, §4.2, kde je aj
+  poznámka/adresa výdajného miesta, ktoré ju potvrdzujú).
 - Badge „čaká na SAP" ak chýba tag `SAP processed`
 - **Riadok pod nadpisom „Nevybavené objednávky" (v1.2)**, rovnaký na mobile
   aj desktope, zoskupuje dva ovládacie/informačné prvky týkajúce sa deadlinu
@@ -265,13 +267,18 @@ Mobile-first zoznam/karty, na desktope tabuľka. Pre každú objednávku:
 ### 4.2 Detail objednávky
 
 Hlavička: číslo, „Vytvorená"/„Deadline" (§5), zákazník, dopravca (+ pobočka
-Packety), tagy, **„Poznámka Zákazník:"** — ak je vyplnená. Zdroj: štandardné
-Shopify pole `Order.note` — v praxi ide o poznámku, ktorú si zákazník napísal
-sám do poľa poznámky na stránke pokladne (checkout) pri objednávke (overené
-na reálnych dátach: obsahuje typicky konkrétne pokyny k tlači alebo otázky
-zákazníka, napr. „Stihame tlac do 25.9.?"), nie o interný štítok od
-zamestnanca ani o `customAttributes` (to sú len údaje k výdajnému miestu
-Packety). Appka toto pole nikdy nezapisuje, len číta.
+Packety), **SAP indikátor** — „SAP ✓" (chip, keď je tag `SAP processed`
+prítomný) alebo badge „čaká na SAP" (keď chýba) — a napokon **ostatné tagy**
+objednávky okrem `SAP processed`/`zasilkovna_selected`/`zasilkovna_unselected`
+(v1.2, tie sa už zobrazujú vyššie vo vlastnej zrozumiteľnej podobe — dopravca
+a SAP indikátor — takže v surovom zozname tagov by boli duplicitné a len
+zaberali miesto pre budúce etapy), **„Poznámka Zákazník:"** — ak je vyplnená.
+Zdroj: štandardné Shopify pole `Order.note` — v praxi ide o poznámku, ktorú si
+zákazník napísal sám do poľa poznámky na stránke pokladne (checkout) pri
+objednávke (overené na reálnych dátach: obsahuje typicky konkrétne pokyny k
+tlači alebo otázky zákazníka, napr. „Stihame tlac do 25.9.?"), nie o interný
+štítok od zamestnanca ani o `customAttributes` (to sú len údaje k výdajnému
+miestu Packety). Appka toto pole nikdy nezapisuje, len číta.
 
 **Poznámka výroba (v1.2)** — samostatný blok hneď nad sekciou „Položky",
 editovateľné textové pole pre internú poznámku výroby (nesúvisí so
@@ -534,4 +541,9 @@ metafield — appka ho pri zobrazení už nikdy neprepočítava (`custom.deadlin
   checkbox „Zoradiť podľa deadline" (na klientovi, odškrtnutie = reset),
   klikateľný celý riadok/karta do detailu a pill „Objednávky po deadline: N"
   vedľa nadpisu, počítaný z rovnakej `isOverdue()` logiky ako červené
-  zvýraznenie (§4.1, §5).
+  zvýraznenie (§4.1, §5). Doladenia: badge dopravcu v zozname bez pobočky
+  Packety (len v detaile, §4.1, §4.2), text „GLS (nevybraná Packeta)" skrátený
+  z pôvodného „GLS (nevybraná pobočka Packeta)" (§3.1), v detaile objednávky
+  zjednotený SAP indikátor („SAP ✓"/„čaká na SAP") a odstránené duplicitné
+  surové tagy `SAP processed`/`zasilkovna_selected`/`zasilkovna_unselected`
+  zo zoznamu ostatných tagov (§4.2).

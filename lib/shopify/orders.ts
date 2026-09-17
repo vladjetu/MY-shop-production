@@ -56,14 +56,19 @@ export function getCarrier(tags: string[]): Carrier {
 
 // Zákazník mal na výber Packetu, ale nevybral konkrétnu pobočku — objednávka ide cez GLS,
 // no chceme to vo výrobe odlíšiť od "klasického" GLS bez ponuky Packety.
-export function getCarrierLabel(tags: string[], pickupPointName?: string): string {
+export function getCarrierLabel(
+  tags: string[],
+  pickupPointName?: string,
+): string {
   const carrier = getCarrier(tags);
 
   if (carrier === "Packeta") {
     return pickupPointName ? `Packeta · ${pickupPointName}` : "Packeta";
   }
 
-  return hasTag(tags, "zasilkovna_unselected") ? "GLS (nevybraná pobočka Packeta)" : "GLS";
+  return hasTag(tags, "zasilkovna_unselected")
+    ? "GLS (nevybraná Packeta)"
+    : "GLS";
 }
 
 // Zakeke pri personalizácii vytvorí Shopify klon produktu (Product type "zakeke-design")
@@ -153,38 +158,51 @@ function parsePrintedItemKeys(raw: string | null | undefined): string[] {
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((key): key is string => typeof key === "string") : [];
+    return Array.isArray(parsed)
+      ? parsed.filter((key): key is string => typeof key === "string")
+      : [];
   } catch {
     return [];
   }
 }
 
-function nameFromAddress(address: { firstName: string | null; lastName: string | null } | null) {
+function nameFromAddress(
+  address: { firstName: string | null; lastName: string | null } | null,
+) {
   if (!address) return null;
-  const fullName = [address.firstName, address.lastName].filter(Boolean).join(" ");
+  const fullName = [address.firstName, address.lastName]
+    .filter(Boolean)
+    .join(" ");
   return fullName.length > 0 ? fullName : null;
 }
 
 function mapOrder(node: OrderNode): ShopifyOrder {
   const customerName =
-    nameFromAddress(node.shippingAddress) ?? nameFromAddress(node.billingAddress) ?? "Neznámy zákazník";
+    nameFromAddress(node.shippingAddress) ??
+    nameFromAddress(node.billingAddress) ??
+    "Neznámy zákazník";
 
   const pickupPointAttribute = node.customAttributes.find(
-    (attr) => attr.key === "PickupPointName"
+    (attr) => attr.key === "PickupPointName",
   );
 
-  const lineItems: ShopifyLineItem[] = node.lineItems.edges.map(({ node: lineItem }) => ({
-    id: lineItem.id,
-    title: lineItem.title,
-    variantTitle: lineItem.variant?.title ?? null,
-    sku: lineItem.sku ?? lineItem.variant?.sku ?? null,
-    quantity: lineItem.quantity,
-    stockMerchyou: null,
-    stockSuppliers: null,
-  }));
+  const lineItems: ShopifyLineItem[] = node.lineItems.edges.map(
+    ({ node: lineItem }) => ({
+      id: lineItem.id,
+      title: lineItem.title,
+      variantTitle: lineItem.variant?.title ?? null,
+      sku: lineItem.sku ?? lineItem.variant?.sku ?? null,
+      quantity: lineItem.quantity,
+      stockMerchyou: null,
+      stockSuppliers: null,
+    }),
+  );
 
-  const deadlineTypeRaw = node.deadlineType?.value ? Number(node.deadlineType.value) : null;
-  const deadlineType = deadlineTypeRaw === 3 || deadlineTypeRaw === 12 ? deadlineTypeRaw : null;
+  const deadlineTypeRaw = node.deadlineType?.value
+    ? Number(node.deadlineType.value)
+    : null;
+  const deadlineType =
+    deadlineTypeRaw === 3 || deadlineTypeRaw === 12 ? deadlineTypeRaw : null;
 
   return {
     id: node.id,
@@ -202,17 +220,26 @@ function mapOrder(node: OrderNode): ShopifyOrder {
   };
 }
 
-type StockBySku = Map<string, { stockMerchyou: string | null; stockSuppliers: string | null }>;
+type StockBySku = Map<
+  string,
+  { stockMerchyou: string | null; stockSuppliers: string | null }
+>;
 
-export async function fetchStockBySku(skus: (string | null)[]): Promise<StockBySku> {
+export async function fetchStockBySku(
+  skus: (string | null)[],
+): Promise<StockBySku> {
   const result: StockBySku = new Map();
-  const uniqueSkus = Array.from(new Set(skus.filter((sku): sku is string => Boolean(sku))));
+  const uniqueSkus = Array.from(
+    new Set(skus.filter((sku): sku is string => Boolean(sku))),
+  );
 
   if (uniqueSkus.length === 0) {
     return result;
   }
 
-  const searchQuery = uniqueSkus.map((sku) => `sku:${JSON.stringify(sku)}`).join(" OR ");
+  const searchQuery = uniqueSkus
+    .map((sku) => `sku:${JSON.stringify(sku)}`)
+    .join(" OR ");
 
   const query = `
     query VariantsBySku($searchQuery: String!) {
@@ -255,7 +282,9 @@ export async function fetchStockBySku(skus: (string | null)[]): Promise<StockByS
     const candidates = variants.filter((variant) => variant.sku === sku);
     const original =
       candidates.find(
-        (variant) => (variant.product.productType ?? "").trim().toLowerCase() !== ZAKEKE_PRODUCT_TYPE
+        (variant) =>
+          (variant.product.productType ?? "").trim().toLowerCase() !==
+          ZAKEKE_PRODUCT_TYPE,
       ) ?? candidates[0];
 
     if (!original) continue;
@@ -274,7 +303,9 @@ export async function fetchStockBySku(skus: (string | null)[]): Promise<StockByS
 }
 
 async function attachStockData(orders: ShopifyOrder[]): Promise<void> {
-  const allSkus = orders.flatMap((order) => order.lineItems.map((item) => item.sku));
+  const allSkus = orders.flatMap((order) =>
+    order.lineItems.map((item) => item.sku),
+  );
   const stockBySku = await fetchStockBySku(allSkus);
 
   for (const order of orders) {
@@ -307,17 +338,24 @@ export async function fetchUnfulfilledOrders(): Promise<ShopifyOrder[]> {
     }
   `;
 
-  const data = await adminGraphql<{ orders: { edges: { node: OrderNode }[] } }>(query, {
-    first: 50,
-  });
+  const data = await adminGraphql<{ orders: { edges: { node: OrderNode }[] } }>(
+    query,
+    {
+      first: 50,
+    },
+  );
 
   const orders = data.orders.edges.map((edge) => mapOrder(edge.node));
   await attachStockData(orders);
   return orders;
 }
 
-export async function fetchOrderByNumber(orderNumber: string): Promise<ShopifyOrder | null> {
-  const normalized = orderNumber.startsWith("#") ? orderNumber : `#${orderNumber}`;
+export async function fetchOrderByNumber(
+  orderNumber: string,
+): Promise<ShopifyOrder | null> {
+  const normalized = orderNumber.startsWith("#")
+    ? orderNumber
+    : `#${orderNumber}`;
 
   const query = `
     query OrderByName($searchQuery: String!) {
@@ -331,9 +369,12 @@ export async function fetchOrderByNumber(orderNumber: string): Promise<ShopifyOr
     }
   `;
 
-  const data = await adminGraphql<{ orders: { edges: { node: OrderNode }[] } }>(query, {
-    searchQuery: `name:${normalized}`,
-  });
+  const data = await adminGraphql<{ orders: { edges: { node: OrderNode }[] } }>(
+    query,
+    {
+      searchQuery: `name:${normalized}`,
+    },
+  );
 
   const node = data.orders.edges[0]?.node;
   if (!node) return null;

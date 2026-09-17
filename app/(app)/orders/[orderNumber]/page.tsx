@@ -62,10 +62,16 @@ export default async function OrderDetailPage({
   );
 }
 
+// Tagy, ktoré appka už zobrazuje inde vo vlastnej, zrozumiteľnejšej podobe
+// (SAP indikátor a dopravca s pobočkou nižšie) — v surovom zozname tagov by
+// boli duplicitné a zbytočne zaberali miesto.
+const HANDLED_TAGS = new Set(["sap processed", "zasilkovna_selected", "zasilkovna_unselected"]);
+
 function OrderHeader({ order }: { order: ShopifyOrder }) {
   const sapDone = hasSapProcessed(order.tags);
   const carrier = getCarrier(order.tags);
   const overdue = isOverdue(order.deliveryDeadline);
+  const otherTags = order.tags.filter((tag) => !HANDLED_TAGS.has(tag.trim().toLowerCase()));
 
   return (
     <div className={`order-detail-header${overdue ? " order-detail-header--overdue" : ""}`}>
@@ -93,14 +99,18 @@ function OrderHeader({ order }: { order: ShopifyOrder }) {
         >
           {getCarrierLabel(order.tags, order.pickupPointName)}
         </span>
-        {!sapDone && <span className="badge badge--sap-pending">čaká na SAP</span>}
+        {sapDone ? (
+          <span className="tag-chip">SAP ✓</span>
+        ) : (
+          <span className="badge badge--sap-pending">čaká na SAP</span>
+        )}
       </div>
 
       {order.note && <p className="order-note">Poznámka Zákazník: {order.note}</p>}
 
-      {order.tags.length > 0 && (
+      {otherTags.length > 0 && (
         <div className="order-tags">
-          {order.tags.map((tag) => (
+          {otherTags.map((tag) => (
             <span key={tag} className="tag-chip">
               {tag}
             </span>

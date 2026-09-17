@@ -71,7 +71,10 @@ export default async function HomePage() {
       customerName: order.customerName,
       skuLabel: getSkuLabel(order),
       carrier: getCarrier(order.tags),
-      carrierLabel: getCarrierLabel(order.tags, order.pickupPointName),
+      // Bez pobočky Packety — v zozname stačí "Packeta", konkrétnu pobočku
+      // vidno až v detaile objednávky (kde je aj poznámka/adresa výdajného
+      // miesta, ktoré potvrdzujú, že ide o správnu pobočku).
+      carrierLabel: getCarrierLabel(order.tags),
       sapDone: hasSapProcessed(order.tags),
       deliveryDeadline: order.deliveryDeadline,
       overdue: isOverdue(order.deliveryDeadline),
