@@ -213,30 +213,33 @@ Mobile-first zoznam/karty, na desktope tabuľka. Pre každú objednávku:
   „Bez potlače".
 - Badge dopravcu: Packeta / GLS
 - Badge „čaká na SAP" ak chýba tag `SAP processed`
-- **Pill „Objednávky po deadline: N"** (v1.2) vedľa nadpisu „Nevybavené
-  objednávky", výrazný (červený, rovnaké farby ako badge „čaká na SAP" — §9,
-  žiadny nový odtieň). N = počet zobrazených objednávok s `overdue === true`
-  (rovnaká hodnota, akú čítajú karty/riadky na červené zvýraznenie — pozri
-  presnú definíciu „po termíne" v §5 — nemôže sa s nimi teda nikdy rozísť).
-  Objednávky bez deadlinu sa nepočítajú. Číslo je nezávislé od triedenia
-  (zaškrtnutie „Zoradiť podľa deadline" mení len poradie, nie počet).
-  **Pri N = 0 sa pill vôbec nezobrazuje** (nie neutrálny sivý „0") — zámerne:
-  je to výstražný prvok, ktorého zmyslom je upútať pozornosť na problém;
-  trvalo prítomná (čo aj neutrálna) nula by časom naučila výrobu pill
-  ignorovať, kým jeho úplná neprítomnosť jasne znamená „žiadny problém".
-- **Triedenie (v1.2)**, na klientovi (rádovo desiatky objednávok — ďalší
-  request na server by bol zbytočný a pomalší; ak by to niekedy nestačilo,
-  rieši sa to zvlášť neskôr): jediný checkbox „Zoradiť podľa deadline" nad
-  zoznamom, rovnaký na mobile aj desktope. Zaškrtnutie
-  zoradí podľa deadlinu (najbližší termín hore), odškrtnutie je zároveň jeho
-  vlastný reset — vráti presne predvolený stav (podľa dátumu vytvorenia,
-  najstaršie hore), netreba naň samostatné tlačidlo. Objednávky bez deadlinu
-  („—") pri zoradení podľa deadlinu vždy skončia na konci zoznamu — nie
-  zamiešané medzi ostatnými (logika `lib/order-sort.ts`, s unit testami práve
-  na tento prípad, `npm test`). Zámerne bez viacerých kritérií/smerov/
-  vyhľadávania podľa čísla objednávky — vyskúšané, no v praxi to výrobu len
-  mýlilo (nejasné šípky pri stĺpcoch) a vyhľadávanie sa nevyužívalo, len
-  zaberalo miesto.
+- **Riadok pod nadpisom „Nevybavené objednávky" (v1.2)**, rovnaký na mobile
+  aj desktope, zoskupuje dva ovládacie/informačné prvky týkajúce sa deadlinu
+  (nadpis a aktuálny dátum ostávajú na svojej vlastnej úrovni vyššie, §4.1):
+  - **Checkbox „Zoradiť podľa deadline"** — na klientovi (rádovo desiatky
+    objednávok, ďalší request na server by bol zbytočný a pomalší; ak by to
+    niekedy nestačilo, rieši sa to zvlášť neskôr). Zaškrtnutie zoradí podľa
+    deadlinu (najbližší termín hore), odškrtnutie je zároveň jeho vlastný
+    reset — vráti presne predvolený stav (podľa dátumu vytvorenia, najstaršie
+    hore), netreba naň samostatné tlačidlo. Objednávky bez deadlinu („—")
+    pri zoradení podľa deadlinu vždy skončia na konci zoznamu — nie zamiešané
+    medzi ostatnými (logika `lib/order-sort.ts`, s unit testami práve na
+    tento prípad, `npm test`). Zámerne bez viacerých kritérií/smerov/
+    vyhľadávania podľa čísla objednávky — vyskúšané, no v praxi to výrobu len
+    mýlilo (nejasné šípky pri stĺpcoch) a vyhľadávanie sa nevyužívalo, len
+    zaberalo miesto.
+  - **Pill „Objednávky po deadline: N"** — text „Objednávky po deadline:"
+    tmavý (bežná farba textu), samotné **číslo N červené** (`--color-warning-
+    text`, rovnaká paleta ako badge „čaká na SAP" — §9, žiadny nový odtieň).
+    N = počet objednávok s `overdue === true` (rovnaká hodnota, akú čítajú
+    karty/riadky na červené zvýraznenie — presná definícia „po termíne" v
+    §5 — nemôže sa s nimi teda nikdy rozísť). Objednávky bez deadlinu sa
+    nepočítajú. Číslo je nezávislé od triedenia (zaškrtnutie checkboxu vyššie
+    mení len poradie, nie počet). **Pri N = 0 sa pill vôbec nezobrazuje**
+    (nie neutrálny sivý „0") — zámerne: je to výstražný prvok, ktorého
+    zmyslom je upútať pozornosť na problém; trvalo prítomná (čo aj
+    neutrálna) nula by časom naučila výrobu pill ignorovať, kým jeho úplná
+    neprítomnosť jasne znamená „žiadny problém".
 - **Celý riadok (desktop) / celá karta (mobil) je klikateľná** do detailu
   objednávky — nie len číslo objednávky. Riešené dvoma prekrývajúcimi sa
   `<a>` prvkami (nie `onClick` s programovým presmerovaním, ktoré by zabilo

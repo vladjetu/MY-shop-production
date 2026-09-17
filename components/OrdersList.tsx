@@ -30,8 +30,16 @@ export function OrdersList({ orders }: { orders: OrderRow[] }) {
     return [...orders].sort((a, b) => compareOrders(a, b, key, "asc"));
   }, [orders, sortByDeadline]);
 
+  // Rovnaké pole order.overdue, aké čítajú karty/riadky nižšie na červené
+  // zvýraznenie (isOverdue, lib/format.ts) — číslo v pille sa preto nemôže
+  // s nimi rozísť. Počíta sa zo VŠETKÝCH objednávok, nie z visibleOrders
+  // (triedenie mení len poradie, nie počet).
+  const overdueCount = useMemo(() => orders.filter((order) => order.overdue).length, [orders]);
+
   return (
     <>
+      {/* Obe ovládanie súvisiace s deadlinom v jednom riadku — nadpis stránky
+          a dátum (page.tsx) ostávajú na svojej vlastnej úrovni vyššie. */}
       <div className="order-toolbar">
         <label className="deadline-sort-toggle">
           <input
@@ -41,6 +49,15 @@ export function OrdersList({ orders }: { orders: OrderRow[] }) {
           />
           <span>Zoradiť podľa deadline</span>
         </label>
+
+        {/* Nula sa zámerne nezobrazuje vôbec (nie sivý "0") — pill je tu na to,
+            aby upútal pozornosť na problém; keď žiadny nie je, netreba
+            zobrazovať, že nie je, viď SPEC.md §4.1. */}
+        {overdueCount > 0 && (
+          <span className="badge badge--overdue-count">
+            Objednávky po deadline: <span className="overdue-count-number">{overdueCount}</span>
+          </span>
+        )}
       </div>
 
       <div className="order-cards">

@@ -78,26 +78,12 @@ export default async function HomePage() {
     };
   });
 
-  // Rovnaké pole order.overdue, aké čítajú karty/riadky na červené zvýraznenie
-  // (isOverdue, lib/format.ts) — číslo v pille sa preto nemôže s nimi rozísť.
-  // Počíta sa zo VŠETKÝCH zobrazených objednávok (triedenie poradie nemení,
-  // takže zaškrtnutie "Zoradiť podľa deadline" na počet nemá vplyv).
-  const overdueCount = orderRows.filter((row) => row.overdue).length;
-
   return (
     <>
       <div className="page-header-row">
         <h2 className="page-title">
           Nevybavené objednávky{loadError ? "" : ` (${orders.length})`}
         </h2>
-        {/* Nula sa zámerne nezobrazuje vôbec (nie sivý "0") — pill je tu na to,
-            aby upútal pozornosť na problém; keď žiadny nie je, netreba
-            zobrazovať, že nie je, viď SPEC.md §4.1. */}
-        {!loadError && overdueCount > 0 && (
-          <span className="badge badge--overdue-count">
-            Objednávky po deadline: {overdueCount}
-          </span>
-        )}
         <span className="current-date">{formatSlovakDayDate()}</span>
       </div>
 
