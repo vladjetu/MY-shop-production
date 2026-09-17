@@ -215,22 +215,17 @@ Mobile-first zoznam/karty, na desktope tabuľka. Pre každú objednávku:
 - Badge „čaká na SAP" ak chýba tag `SAP processed`
 - **Triedenie (v1.2)**, na klientovi (rádovo desiatky objednávok — ďalší
   request na server by bol zbytočný a pomalší; ak by to niekedy nestačilo,
-  rieši sa to zvlášť neskôr): podľa čísla objednávky, dátumu vytvorenia alebo
-  deadlinu, každé obojsmerne. Predvolený stav: podľa dátumu vytvorenia,
-  najstaršie hore. Číslo objednávky sa triedi **číselne** (inak by „#999"
-  skončilo pred „#1772"). Objednávky bez deadlinu („—") pri triedení podľa
-  deadlinu vždy skončia na konci zoznamu, v oboch smeroch — nie zamiešané
-  medzi ostatnými (logika `lib/order-sort.ts`, s unit testami práve na tento
-  prípad, `npm test`). Desktop: klikateľné celé hlavičky stĺpcov (Objednávka/
-  Vytvorená/Deadline), šípka ▲/▼ pri aktívnom stĺpci. Mobil: jeden kompaktný
-  natívny `<select>` nad zoznamom (pole + smer spolu v texte jednej možnosti,
-  napr. „Deadline (najbližšie prvé)") — namiesto radu prepínačov, kvôli
-  veľkému dotykovo spoľahlivému pickeru od OS a jednoznačnosti smeru.
-- **Vyhľadávanie** podľa čísla objednávky (textové pole nad zoznamom,
-  filtruje na klientovi rovnako ako triedenie).
-- **„Zrušiť filtre"** — tlačidlo vráti triedenie aj vyhľadávanie do
-  predvoleného stavu; zobrazuje sa len vtedy, keď je od predvoleného stavu
-  odlišné (aby nezavadzalo, keď nie je čo resetovať).
+  rieši sa to zvlášť neskôr): jediný checkbox „Zoradiť podľa deadlinu
+  (najbližšie prvé)" nad zoznamom, rovnaký na mobile aj desktope. Zaškrtnutie
+  zoradí podľa deadlinu (najbližší termín hore), odškrtnutie je zároveň jeho
+  vlastný reset — vráti presne predvolený stav (podľa dátumu vytvorenia,
+  najstaršie hore), netreba naň samostatné tlačidlo. Objednávky bez deadlinu
+  („—") pri zoradení podľa deadlinu vždy skončia na konci zoznamu — nie
+  zamiešané medzi ostatnými (logika `lib/order-sort.ts`, s unit testami práve
+  na tento prípad, `npm test`). Zámerne bez viacerých kritérií/smerov/
+  vyhľadávania podľa čísla objednávky — vyskúšané, no v praxi to výrobu len
+  mýlilo (nejasné šípky pri stĺpcoch) a vyhľadávanie sa nevyužívalo, len
+  zaberalo miesto.
 - **Celý riadok (desktop) / celá karta (mobil) je klikateľná** do detailu
   objednávky — nie len číslo objednávky. Riešené dvoma prekrývajúcimi sa
   `<a>` prvkami (nie `onClick` s programovým presmerovaním, ktoré by zabilo
@@ -491,6 +486,5 @@ metafield — appka ho pri zobrazení už nikdy neprepočítava (`custom.deadlin
   Zákazník:" pre jasné odlíšenie od nového editovateľného poľa „Poznámka
   výroba" (interná poznámka výroby, order metafield `custom.production_note`,
   autosave s detekciou súbežnej editácie — §2, §4.2). Zoznam objednávok:
-  triedenie podľa čísla/dátumu vytvorenia/deadlinu (obojsmerne, na klientovi),
-  vyhľadávanie podľa čísla objednávky, tlačidlo „Zrušiť filtre" a klikateľný
-  celý riadok/karta do detailu (§4.1).
+  checkbox „Zoradiť podľa deadlinu" (na klientovi, odškrtnutie = reset) a
+  klikateľný celý riadok/karta do detailu (§4.1).

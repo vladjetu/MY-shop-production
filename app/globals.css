@@ -224,75 +224,31 @@ h3 {
   font-size: 0.85rem;
 }
 
-/* ---------- Zoznam objednávok: nástrojová lišta (hľadanie/triedenie/reset) ---------- */
+/* ---------- Zoznam objednávok: triedenie podľa deadlinu ---------- */
 
 .order-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
   margin-bottom: 14px;
 }
 
-.order-search-input {
-  flex: 1 1 160px;
-  min-width: 0;
+/* Rovnaký vzor ako checkbox "Vytlačené" v detaile objednávky (components/DesignCard.tsx)
+   — jediný ovládací prvok pre triedenie: zaškrtnutie zoradí podľa deadlinu, odškrtnutie
+   je zároveň jeho vlastný reset (netreba naň samostatné tlačidlo). */
+.deadline-sort-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   min-height: 44px;
-  padding: 8px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  font-family: var(--font-sans);
-  font-size: 0.9rem;
-  font-weight: 300;
-  color: var(--color-text);
-  background: var(--color-surface);
-}
-
-.order-search-input:focus {
-  outline: none;
-  border-color: var(--color-accent);
-}
-
-/* Triedenie na mobile: jeden kompaktný natívny select (pole + smer spolu v texte
-   jednej možnosti) namiesto radu prepínačov — veľký, dotykovo spoľahlivý picker
-   zadarmo od OS, žiadna nejednoznačnosť "v akom smere to práve je". Na desktope
-   (od 720px, viď media query nižšie) sa skryje, triedenie tam ovládajú klikateľné
-   hlavičky stĺpcov tabuľky namiesto neho. */
-.sort-select {
-  flex: 1 1 160px;
-  min-width: 0;
-  min-height: 44px;
-  padding: 8px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  font-family: var(--font-sans);
-  font-size: 0.85rem;
-  font-weight: 300;
-  color: var(--color-text);
-  background: var(--color-surface);
-}
-
-.reset-filters-button {
-  min-height: 44px;
-  padding: 8px 14px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface);
-  color: var(--color-text);
+  padding: 4px 0;
   font-size: 0.85rem;
   font-weight: 700;
   cursor: pointer;
-  white-space: nowrap;
 }
 
-.reset-filters-button:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-}
-
-@media (min-width: 720px) {
-  .sort-select {
-    display: none;
-  }
+.deadline-sort-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-accent);
+  flex-shrink: 0;
 }
 
 /* ---------- Order list: mobile cards ---------- */
@@ -471,33 +427,6 @@ h3 {
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.02em;
-}
-
-/* Klikateľná hlavička stĺpca (Objednávka/Vytvorená/Deadline) — tlačidlo bez
-   vlastného vzhľadu, len prevezme štýl z .order-table th okolo seba. */
-.sort-header {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  border: none;
-  background: none;
-  padding: 0;
-  margin: 0;
-  font: inherit;
-  color: inherit;
-  text-transform: inherit;
-  letter-spacing: inherit;
-  cursor: pointer;
-  text-align: left;
-}
-
-.sort-header:hover {
-  color: var(--color-accent);
-}
-
-.sort-arrow {
-  margin-left: 2px;
-  color: var(--color-text);
 }
 
 /* position:relative na <tr> + position:absolute (inset:0) na .row-link-overlay

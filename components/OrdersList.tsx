@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { formatDate } from "@/lib/format";
-import { compareOrders, SortDirection, SortKey } from "@/lib/order-sort";
+import { compareOrders } from "@/lib/order-sort";
 
 export type OrderRow = {
   orderNumber: string;
@@ -18,145 +18,57 @@ export type OrderRow = {
   overdue: boolean;
 };
 
-const DEFAULT_SORT_KEY: SortKey = "createdAt";
-const DEFAULT_SORT_DIRECTION: SortDirection = "asc";
-
 export function OrdersList({ orders }: { orders: OrderRow[] }) {
-  const [sortKey, setSortKey] = useState<SortKey>(DEFAULT_SORT_KEY);
-  const [sortDirection, setSortDirection] = useState<SortDirection>(DEFAULT_SORT_DIRECTION);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const isDefaultState =
-    sortKey === DEFAULT_SORT_KEY && sortDirection === DEFAULT_SORT_DIRECTION && searchQuery.trim() === "";
+  // Jediná voľba: predvolený stav (dátum vytvorenia, najstaršie hore) alebo
+  // zoradenie podľa deadlinu (najbližšie hore, chýbajúce vždy na konci —
+  // lib/order-sort.ts). Odškrtnutie checkboxu je zároveň jeho vlastný reset,
+  // netreba naň samostatné tlačidlo.
+  const [sortByDeadline, setSortByDeadline] = useState(false);
 
   const visibleOrders = useMemo(() => {
-    const query = searchQuery.trim().replace(/^#/, "");
-    const filtered = query
-      ? orders.filter((order) => order.orderNumberValue.toString().includes(query))
-      : orders;
-
-    return [...filtered].sort((a, b) => compareOrders(a, b, sortKey, sortDirection));
-  }, [orders, searchQuery, sortKey, sortDirection]);
-
-  function handleSortClick(key: SortKey) {
-    if (sortKey === key) {
-      setSortDirection((direction) => (direction === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDirection("asc");
-    }
-  }
-
-  function handleReset() {
-    setSortKey(DEFAULT_SORT_KEY);
-    setSortDirection(DEFAULT_SORT_DIRECTION);
-    setSearchQuery("");
-  }
-
-  function ariaSortFor(key: SortKey): "ascending" | "descending" | "none" {
-    if (sortKey !== key) return "none";
-    return sortDirection === "asc" ? "ascending" : "descending";
-  }
-
-  function sortArrow(key: SortKey) {
-    if (sortKey !== key) return null;
-    return <span className="sort-arrow">{sortDirection === "asc" ? " ▲" : " ▼"}</span>;
-  }
+    const key = sortByDeadline ? "deadline" : "createdAt";
+    return [...orders].sort((a, b) => compareOrders(a, b, key, "asc"));
+  }, [orders, sortByDeadline]);
 
   return (
     <>
       <div className="order-toolbar">
-        <input
-          type="text"
-          inputMode="numeric"
-          className="order-search-input"
-          placeholder="Hľadať podľa čísla objednávky…"
-          value={searchQuery}
-          onChange={(event) => setSearchQuery(event.target.value)}
-          aria-label="Hľadať podľa čísla objednávky"
-        />
-
-        <select
-          className="sort-select"
-          value={`${sortKey}:${sortDirection}`}
-          onChange={(event) => {
-            const [key, direction] = event.target.value.split(":") as [SortKey, SortDirection];
-            setSortKey(key);
-            setSortDirection(direction);
-          }}
-          aria-label="Zoradiť podľa"
-        >
-          <option value="createdAt:asc">Dátum vytvorenia (najstaršie prvé)</option>
-          <option value="createdAt:desc">Dátum vytvorenia (najnovšie prvé)</option>
-          <option value="deadline:asc">Deadline (najbližšie prvé)</option>
-          <option value="deadline:desc">Deadline (najvzdialenejšie prvé)</option>
-          <option value="orderNumber:asc">Číslo objednávky (vzostupne)</option>
-          <option value="orderNumber:desc">Číslo objednávky (zostupne)</option>
-        </select>
-
-        {!isDefaultState && (
-          <button type="button" className="reset-filters-button" onClick={handleReset}>
-            Zrušiť filtre
-          </button>
-        )}
+        <label className="deadline-sort-toggle">
+          <input
+            type="checkbox"
+            checked={sortByDeadline}
+            onChange={(event) => setSortByDeadline(event.target.checked)}
+          />
+          <span>Zoradiť podľa deadlinu (najbližšie prvé)</span>
+        </label>
       </div>
 
-      {visibleOrders.length === 0 ? (
-        <p className="empty-state">Žiadna objednávka nezodpovedá hľadaniu.</p>
-      ) : (
-        <>
-          <div className="order-cards">
-            {visibleOrders.map((order) => (
-              <OrderCard key={order.orderNumber} order={order} />
-            ))}
-          </div>
+      <div className="order-cards">
+        {visibleOrders.map((order) => (
+          <OrderCard key={order.orderNumber} order={order} />
+        ))}
+      </div>
 
-          <div className="order-table-wrapper">
-            <table className="order-table">
-              <thead>
-                <tr>
-                  <th aria-sort={ariaSortFor("orderNumber")}>
-                    <button
-                      type="button"
-                      className="sort-header"
-                      onClick={() => handleSortClick("orderNumber")}
-                    >
-                      Objednávka{sortArrow("orderNumber")}
-                    </button>
-                  </th>
-                  <th className="order-table-nowrap-col" aria-sort={ariaSortFor("createdAt")}>
-                    <button
-                      type="button"
-                      className="sort-header"
-                      onClick={() => handleSortClick("createdAt")}
-                    >
-                      Vytvorená{sortArrow("createdAt")}
-                    </button>
-                  </th>
-                  <th className="order-table-nowrap-col" aria-sort={ariaSortFor("deadline")}>
-                    <button
-                      type="button"
-                      className="sort-header"
-                      onClick={() => handleSortClick("deadline")}
-                    >
-                      Deadline{sortArrow("deadline")}
-                    </button>
-                  </th>
-                  <th>Zákazník</th>
-                  <th className="order-table-sku-col">SKU · KS</th>
-                  <th>Dopravca</th>
-                  <th>SAP</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visibleOrders.map((order) => (
-                  <OrderTableRow key={order.orderNumber} order={order} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
+      <div className="order-table-wrapper">
+        <table className="order-table">
+          <thead>
+            <tr>
+              <th>Objednávka</th>
+              <th className="order-table-nowrap-col">Vytvorená</th>
+              <th className="order-table-nowrap-col">Deadline</th>
+              <th>Zákazník</th>
+              <th className="order-table-sku-col">SKU · KS</th>
+              <th>Dopravca</th>
+              <th>SAP</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visibleOrders.map((order) => (
+              <OrderTableRow key={order.orderNumber} order={order} />
+            ))}
+          </tbody>
+        </table>
+      </div>
     </>
   );
 }
