@@ -34,7 +34,10 @@ export function OrdersList({ orders }: { orders: OrderRow[] }) {
   // zvýraznenie (isOverdue, lib/format.ts) — číslo v pille sa preto nemôže
   // s nimi rozísť. Počíta sa zo VŠETKÝCH objednávok, nie z visibleOrders
   // (triedenie mení len poradie, nie počet).
-  const overdueCount = useMemo(() => orders.filter((order) => order.overdue).length, [orders]);
+  const overdueCount = useMemo(
+    () => orders.filter((order) => order.overdue).length,
+    [orders],
+  );
 
   return (
     <>
@@ -55,7 +58,7 @@ export function OrdersList({ orders }: { orders: OrderRow[] }) {
             zobrazovať, že nie je, viď SPEC.md §4.1. */}
         {overdueCount > 0 && (
           <span className="badge badge--overdue-count">
-            Objednávky po deadline: <span className="overdue-count-number">{overdueCount}</span>
+            Objednávky po deadline: {overdueCount}
           </span>
         )}
       </div>

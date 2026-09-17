@@ -228,10 +228,13 @@ Mobile-first zoznam/karty, na desktope tabuľka. Pre každú objednávku:
     vyhľadávania podľa čísla objednávky — vyskúšané, no v praxi to výrobu len
     mýlilo (nejasné šípky pri stĺpcoch) a vyhľadávanie sa nevyužívalo, len
     zaberalo miesto.
-  - **Pill „Objednávky po deadline: N"** — text „Objednávky po deadline:"
-    tmavý (bežná farba textu), samotné **číslo N červené** (`--color-warning-
-    text`, rovnaká paleta ako badge „čaká na SAP" — §9, žiadny nový odtieň).
-    N = počet objednávok s `overdue === true` (rovnaká hodnota, akú čítajú
+  - **Pill „Objednávky po deadline: N"** — pozadie rovnaké ako badge „čaká
+    na SAP" (`--color-warning-bg`, §9, žiadny nový odtieň), ale text aj
+    číslo N sú tmavé (bežná farba textu) a regular rezom (nie bold ako
+    ostatné badge) — je to len doplnková informácia, plné červené vyzeralo
+    príliš agresívne na niečo, čo len dopĺňa zoznam nižšie (samotné červené
+    zvýraznenie zostáva na konkrétnych riadkoch/kartách). N = počet
+    objednávok s `overdue === true` (rovnaká hodnota, akú čítajú
     karty/riadky na červené zvýraznenie — presná definícia „po termíne" v
     §5 — nemôže sa s nimi teda nikdy rozísť). Objednávky bez deadlinu sa
     nepočítajú. Číslo je nezávislé od triedenia (zaškrtnutie checkboxu vyššie

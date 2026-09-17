@@ -393,19 +393,16 @@ h3 {
   color: var(--color-warning-text);
 }
 
-/* Rovnaké pozadie ako badge--sap-pending (§9, žiadny nový odtieň) — text je
-   tmavý (nie celý červený), červená zostáva vyhradená len pre samotné číslo
-   (.overdue-count-number), aby vynikla ako to hlavné. Pill sa zobrazuje len
-   pri count > 0 (viď components/OrdersList.tsx), takže tu netreba neutrálny
-   variant pre nulu. */
+/* Rovnaké pozadie ako badge--sap-pending (§9, žiadny nový odtieň) — samotný
+   text (aj číslo) je tmavý, nie červený, a zámerne regular (nie bold ako
+   ostatné badge) — je to len doplnková informácia, nie rovnocenné
+   upozornenie ako "čaká na SAP". Pill sa zobrazuje len pri count > 0 (viď
+   components/OrdersList.tsx), takže tu netreba neutrálny variant pre nulu. */
 .badge--overdue-count {
   background: var(--color-warning-bg);
   color: var(--color-text);
   font-size: 0.8rem;
-}
-
-.overdue-count-number {
-  color: var(--color-warning-text);
+  font-weight: 300;
 }
 
 /* ---------- Order list: desktop table ---------- */
