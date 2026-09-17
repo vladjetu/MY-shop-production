@@ -351,6 +351,15 @@ h3 {
   background: var(--color-warning-bg);
 }
 
+/* Rovnaké jemné stmavenie pri hoveri ako ostatné karty/riadky (.order-card:hover
+   nižšie mení len border-color, na červenom pozadí by to bolo nedostatočné) —
+   filter namiesto vlastnej "tmavšej červenej" farby, nech sa netreba trafiť
+   presný odtieň a nech zostane úmerný, aj keby sa --color-warning-bg zmenil. */
+.order-card--overdue:hover,
+.order-card--overdue:focus-within {
+  filter: brightness(0.96);
+}
+
 .deadline-overdue {
   color: var(--color-warning-text);
   font-weight: 700;
@@ -475,6 +484,15 @@ h3 {
 
 .order-table tbody tr.order-row--overdue {
   background: var(--color-warning-bg);
+}
+
+/* .order-table tbody tr:hover vyššie mení background na --color-bg, čo má
+   nižšiu špecifickosť než .order-row--overdue a teda by na červenom riadku
+   nemalo žiadny efekt — filter namiesto toho jemne stmaví čokoľvek pod ním,
+   funguje teda rovnako spoľahlivo pre červené aj normálne riadky. */
+.order-table tbody tr.order-row--overdue:hover,
+.order-table tbody tr.order-row--overdue:focus-within {
+  filter: brightness(0.96);
 }
 
 @media (min-width: 720px) {
