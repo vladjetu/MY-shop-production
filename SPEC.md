@@ -253,7 +253,11 @@ Mobile-first zoznam/karty, na desktope tabuľka. Pre každú objednávku:
   (vyšší z-index) — jediné miesto, kde je text pod kurzorom myši skutočne
   označiteľný/kopírovateľný, a jediný focusovateľný/čitateľný cieľ pre
   klávesnicu a čítačky obrazovky. Jemný hover (`border-color`/`background`)
-  na celom riadku/karte signalizuje klikateľnosť. Rovnaký princíp (vlastný
+  na celom riadku/karte signalizuje klikateľnosť — na objednávkach po
+  termíne (červené pozadie, §5) rieši rovnaký efekt `filter: brightness()`
+  namiesto zmeny farby pozadia, lebo `border-color`/`background` z bežného
+  hoveru má nižšiu špecifickosť než červené pozadie a bez toho by na týchto
+  riadkoch/kartách hover nemal žiadny viditeľný efekt. Rovnaký princíp (vlastný
   `<a>`/tlačidlo s vyšším z-indexom nad neviditeľným odkazom) platí pre
   akýkoľvek ďalší interaktívny prvok, ktorý by sa v riadku v budúcnosti
   pridal — inak by ho neviditeľný odkaz prekryl.
@@ -272,7 +276,15 @@ Packety). Appka toto pole nikdy nezapisuje, len číta.
 **Poznámka výroba (v1.2)** — samostatný blok hneď nad sekciou „Položky",
 editovateľné textové pole pre internú poznámku výroby (nesúvisí so
 zákazníckou poznámkou vyššie). V prázdnom stave nízke (2 riadky), výška
-rastie automaticky podľa obsahu bez vnútorného scrollovania. Ukladanie:
+rastie automaticky podľa obsahu bez vnútorného scrollovania — prepočítava sa
+pri písaní aj pri zmene šírky okna (napr. otočenie telefónu na šírku; bez
+toho by rovnaký text pri užšej šírke potreboval viac riadkov, ale zostala by
+platiť výška vypočítaná pre pôvodnú šírku, takže spodok textu by vyzeral
+orezaný). **Pozadie poľa je sivé len pri fokuse** (spolu s tyrkysovým
+okrajom) — mimo fokusu splýva s bielou kartou okolo (len tenký okraj
+naznačuje editovateľné pole), aby pole nepôsobilo, akoby doň bolo treba
+stále niečo písať/mazať — poznámka je primárne na čítanie, edituje sa
+zámerne. Ukladanie:
 automaticky ~1,5s po tom, čo používateľ prestane písať (debounce — kratšie by
 zbytočne zaťažovalo Shopify Admin API zápismi na každé slovo, dlhšie
 zväčšuje riziko straty rozpísaného textu), istotne aj pri opustení poľa
