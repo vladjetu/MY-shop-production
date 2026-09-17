@@ -389,6 +389,15 @@ h3 {
   color: var(--color-warning-text);
 }
 
+/* Rovnaké farby ako badge--sap-pending — červená je v brandingu (§9) vyhradená
+   pre negatívnu/varovnú informáciu, žiadny nový odtieň. Pill sa zobrazuje len
+   pri count > 0 (viď app/(app)/page.tsx), takže tu netreba neutrálny variant. */
+.badge--overdue-count {
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  font-size: 0.8rem;
+}
+
 /* ---------- Order list: desktop table ---------- */
 
 .order-table-wrapper {

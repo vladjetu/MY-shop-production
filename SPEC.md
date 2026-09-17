@@ -213,10 +213,21 @@ Mobile-first zoznam/karty, na desktope tabuľka. Pre každú objednávku:
   „Bez potlače".
 - Badge dopravcu: Packeta / GLS
 - Badge „čaká na SAP" ak chýba tag `SAP processed`
+- **Pill „Objednávky po deadline: N"** (v1.2) vedľa nadpisu „Nevybavené
+  objednávky", výrazný (červený, rovnaké farby ako badge „čaká na SAP" — §9,
+  žiadny nový odtieň). N = počet zobrazených objednávok s `overdue === true`
+  (rovnaká hodnota, akú čítajú karty/riadky na červené zvýraznenie — pozri
+  presnú definíciu „po termíne" v §5 — nemôže sa s nimi teda nikdy rozísť).
+  Objednávky bez deadlinu sa nepočítajú. Číslo je nezávislé od triedenia
+  (zaškrtnutie „Zoradiť podľa deadline" mení len poradie, nie počet).
+  **Pri N = 0 sa pill vôbec nezobrazuje** (nie neutrálny sivý „0") — zámerne:
+  je to výstražný prvok, ktorého zmyslom je upútať pozornosť na problém;
+  trvalo prítomná (čo aj neutrálna) nula by časom naučila výrobu pill
+  ignorovať, kým jeho úplná neprítomnosť jasne znamená „žiadny problém".
 - **Triedenie (v1.2)**, na klientovi (rádovo desiatky objednávok — ďalší
   request na server by bol zbytočný a pomalší; ak by to niekedy nestačilo,
-  rieši sa to zvlášť neskôr): jediný checkbox „Zoradiť podľa deadlinu
-  (najbližšie prvé)" nad zoznamom, rovnaký na mobile aj desktope. Zaškrtnutie
+  rieši sa to zvlášť neskôr): jediný checkbox „Zoradiť podľa deadline" nad
+  zoznamom, rovnaký na mobile aj desktope. Zaškrtnutie
   zoradí podľa deadlinu (najbližší termín hore), odškrtnutie je zároveň jeho
   vlastný reset — vráti presne predvolený stav (podľa dátumu vytvorenia,
   najstaršie hore), netreba naň samostatné tlačidlo. Objednávky bez deadlinu
@@ -389,6 +400,14 @@ metafield — appka ho pri zobrazení už nikdy neprepočítava (`custom.deadlin
   (čítané priamo z metafieldu; chýbajúci metafield → „—"). Objednávky po
   termíne majú jemné červené pozadie a červený dátum. Vedľa nadpisu je
   aktuálny deň a dátum po slovensky (`lib/format.ts`).
+  **„Po termíne" je definované ako `deliveryDeadline < dnešný dátum`**
+  (ostré porovnanie, `isOverdue()` v `lib/format.ts`, dátum v Europe/
+  Bratislava) — objednávka s deadlinom napr. 20. 9. sa za oneskorenú
+  považuje až **21. 9.**, v deň samotného deadlinu ešte nie (má "dnes je
+  posledný deň", nie "mešká"). Toto je jediné miesto, kde sa táto podmienka
+  počíta — homepage aj detail objednávky (aj počítadlo v pille, §4.1) čítajú
+  ten istý výsledok (`order.overdue`), nikdy si ho neprepočítavajú vlastnou
+  kópiou logiky, aby sa nemohli rozísť.
   Zoznam (mobile karty aj desktop tabuľka) a detail objednávky majú zámerne
   **odlišný vizuálny štýl** pre tie isté dva dátumy: zoznam kompaktný
   (dátumy v rohu karty/stĺpce, jeden riadok na dátum, na rýchle skenovanie
@@ -404,6 +423,14 @@ metafield — appka ho pri zobrazení už nikdy neprepočítava (`custom.deadlin
 - Druhý e-shop merchshop.com (bez Zakeke) — mimo rozsahu.
 - Push notifikácie, užívateľské účty, história.
 - Vizuálne odlíšenie 3-dňových položiek priamo v detaile objednávky.
+- Zvýraznenie objednávok, ktorým deadline „práve ide" (deň pred termínom,
+  oranžová/žltá) — druhý, samostatný stav vedľa už existujúceho „po termíne"
+  (§5). Pripravené na doplnenie bez prepisu: analogicky k `isOverdue()`
+  pribudne vlastná funkcia (napr. `isDueSoon()`) v `lib/format.ts`, per-row
+  boolean pole (ako `overdue`) a vlastné CSS modifikátory (`--due-soon`) —
+  oba stavy sa navzájom vylučujú (dátum nemôže byť naraz aj "deň pred", aj
+  "po termíne"), takže nehrozí konflikt medzi existujúcim a novým
+  zvýraznením ani medzi ich počítadlami.
 
 ## 7. Akceptačné kritériá MVP
 
@@ -486,5 +513,7 @@ metafield — appka ho pri zobrazení už nikdy neprepočítava (`custom.deadlin
   Zákazník:" pre jasné odlíšenie od nového editovateľného poľa „Poznámka
   výroba" (interná poznámka výroby, order metafield `custom.production_note`,
   autosave s detekciou súbežnej editácie — §2, §4.2). Zoznam objednávok:
-  checkbox „Zoradiť podľa deadlinu" (na klientovi, odškrtnutie = reset) a
-  klikateľný celý riadok/karta do detailu (§4.1).
+  checkbox „Zoradiť podľa deadline" (na klientovi, odškrtnutie = reset),
+  klikateľný celý riadok/karta do detailu a pill „Objednávky po deadline: N"
+  vedľa nadpisu, počítaný z rovnakej `isOverdue()` logiky ako červené
+  zvýraznenie (§4.1, §5).

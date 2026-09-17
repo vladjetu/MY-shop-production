@@ -39,7 +39,7 @@ export function OrdersList({ orders }: { orders: OrderRow[] }) {
             checked={sortByDeadline}
             onChange={(event) => setSortByDeadline(event.target.checked)}
           />
-          <span>Zoradiť podľa deadlinu (najbližšie prvé)</span>
+          <span>Zoradiť podľa deadline</span>
         </label>
       </div>
 
@@ -90,16 +90,26 @@ function OrderCard({ order }: { order: OrderRow }) {
         order.overdue ? " order-card--overdue" : ""
       }`}
     >
-      <a href={order.href} className="row-link-overlay" tabIndex={-1} aria-hidden="true" />
+      <a
+        href={order.href}
+        className="row-link-overlay"
+        tabIndex={-1}
+        aria-hidden="true"
+      />
 
       <div className="order-card-top">
         <a href={order.href} className="order-number">
           {order.orderNumber}
         </a>
         <div className="order-card-dates">
-          <span className="order-card-date">Vytvorená: {formatDate(order.createdAt)}</span>
-          <span className={`order-card-date${order.overdue ? " deadline-overdue" : ""}`}>
-            Deadline: {order.deliveryDeadline ? formatDate(order.deliveryDeadline) : "—"}
+          <span className="order-card-date">
+            Vytvorená: {formatDate(order.createdAt)}
+          </span>
+          <span
+            className={`order-card-date${order.overdue ? " deadline-overdue" : ""}`}
+          >
+            Deadline:{" "}
+            {order.deliveryDeadline ? formatDate(order.deliveryDeadline) : "—"}
           </span>
         </div>
       </div>
@@ -111,7 +121,9 @@ function OrderCard({ order }: { order: OrderRow }) {
         >
           {order.carrierLabel}
         </span>
-        {!order.sapDone && <span className="badge badge--sap-pending">čaká na SAP</span>}
+        {!order.sapDone && (
+          <span className="badge badge--sap-pending">čaká na SAP</span>
+        )}
       </div>
     </div>
   );
@@ -125,13 +137,20 @@ function OrderTableRow({ order }: { order: OrderRow }) {
       }`}
     >
       <td>
-        <a href={order.href} className="row-link-overlay" tabIndex={-1} aria-hidden="true" />
+        <a
+          href={order.href}
+          className="row-link-overlay"
+          tabIndex={-1}
+          aria-hidden="true"
+        />
         <a href={order.href} className="order-number-cell-link">
           {order.orderNumber}
         </a>
       </td>
       <td className="order-table-nowrap-col">{formatDate(order.createdAt)}</td>
-      <td className={`order-table-nowrap-col${order.overdue ? " deadline-overdue" : ""}`}>
+      <td
+        className={`order-table-nowrap-col${order.overdue ? " deadline-overdue" : ""}`}
+      >
         {order.deliveryDeadline ? formatDate(order.deliveryDeadline) : "—"}
       </td>
       <td>{order.customerName}</td>
@@ -143,7 +162,13 @@ function OrderTableRow({ order }: { order: OrderRow }) {
           {order.carrierLabel}
         </span>
       </td>
-      <td>{order.sapDone ? "✓" : <span className="badge badge--sap-pending">čaká na SAP</span>}</td>
+      <td>
+        {order.sapDone ? (
+          "✓"
+        ) : (
+          <span className="badge badge--sap-pending">čaká na SAP</span>
+        )}
+      </td>
     </tr>
   );
 }
