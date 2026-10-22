@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MatchedDesign } from "@/lib/match-designs";
 import { printedItemKey } from "@/lib/shopify/printed-items";
+import { sideLabels } from "@/lib/side-labels";
 import { ZoomableImage } from "@/components/ZoomableImage";
 
 export function DesignCard({
@@ -26,6 +27,8 @@ export function DesignCard({
   // spadneme späť na reálne tlačové súbory, aby náhľad nezmizol úplne.
   const previewImages =
     design.mockups.length > 0 ? design.mockups : design.sides;
+  const previewLabels = sideLabels(previewImages);
+  const downloadLabels = sideLabels(design.sides);
   const itemKey = printedItemKey(design.productSku, design.designId);
 
   const [printed, setPrinted] = useState(initialPrinted);
@@ -154,12 +157,12 @@ export function DesignCard({
         <div className="design-content">
           {previewImages.length > 0 ? (
             <div className="preview-grid">
-              {previewImages.map((side) => (
+              {previewImages.map((side, sideIndex) => (
                 <ZoomableImage
-                  key={side.sideName}
+                  key={side.previewUrl}
                   src={side.previewUrl}
-                  alt={`${productName} – ${side.sideName}`}
-                  label={side.sideName}
+                  alt={`${productName} – ${previewLabels[sideIndex]}`}
+                  label={previewLabels[sideIndex]}
                 />
               ))}
             </div>
@@ -172,17 +175,19 @@ export function DesignCard({
 
           {design.sides.length > 0 && (
             <div className="download-buttons">
-              {design.sides.map((side) => {
+              {design.sides.map((side, sideIndex) => {
+                // Index, nie sideName — jedna strana môže mať viac plôch s rovnakým
+                // názvom (viď lib/side-labels.ts a app/api/download/route.ts).
                 const params = new URLSearchParams({
                   order: orderNumber,
                   itemIndex: String(index),
-                  side: side.sideName,
+                  sideIndex: String(sideIndex),
                 });
 
                 return (
-                  <div key={side.sideName} className="download-buttons-side">
+                  <div key={side.fileUrl} className="download-buttons-side">
                     <span className="download-buttons-label">
-                      {side.sideName}
+                      {downloadLabels[sideIndex]}
                     </span>
                     <a
                       className="download-button"

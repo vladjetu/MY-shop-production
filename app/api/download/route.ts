@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
 import { matchDesignsToLineItems } from "@/lib/match-designs";
 import { fetchOrderByNumber } from "@/lib/shopify/orders";
+import { sideLabels } from "@/lib/side-labels";
 import { fetchOrderDesigns } from "@/lib/zakeke/designs";
 
 // Orez DTF súborov (sharp.trim() nad plnou paletou) môže pri veľkých obrázkoch
@@ -18,16 +19,21 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const orderNumber = searchParams.get("order");
   const itemIndexParam = searchParams.get("itemIndex");
-  const sideName = searchParams.get("side");
+  const sideIndexParam = searchParams.get("sideIndex");
   const format = searchParams.get("format");
 
-  if (!orderNumber || !itemIndexParam || !sideName || (format !== "dtg" && format !== "dtf")) {
+  if (!orderNumber || !itemIndexParam || !sideIndexParam || (format !== "dtg" && format !== "dtf")) {
     return new NextResponse("Chýbajú alebo sú neplatné parametre requestu.", { status: 400 });
   }
 
   const itemIndex = Number(itemIndexParam);
   if (!Number.isInteger(itemIndex) || itemIndex < 0) {
     return new NextResponse("Neplatný parameter itemIndex.", { status: 400 });
+  }
+
+  const sideIndex = Number(sideIndexParam);
+  if (!Number.isInteger(sideIndex) || sideIndex < 0) {
+    return new NextResponse("Neplatný parameter sideIndex.", { status: 400 });
   }
 
   let order;
@@ -55,7 +61,11 @@ export async function GET(request: NextRequest) {
     return new NextResponse("Dizajn sa nenašiel.", { status: 404 });
   }
 
-  const side = design.sides.find((s) => s.sideName === sideName);
+  // Rovnaký princíp ako itemIndex vyššie, o úroveň nižšie: strana sa identifikuje podľa
+  // indexu v poli, NIE podľa sideName — jedna strana môže mať viac tlačových plôch
+  // s rovnakým sideName (napr. zástera s dvomi plochami na FRONT, #2017) a lookup podľa
+  // názvu by vždy vrátil prvú z nich.
+  const side = design.sides[sideIndex];
   if (!side) {
     return new NextResponse("Táto strana dizajnu neexistuje.", { status: 404 });
   }
@@ -64,7 +74,8 @@ export async function GET(request: NextRequest) {
   const matchForThis = matched[itemIndex] ?? null;
   const sku = sanitizeForFilename(matchForThis?.lineItem?.sku ?? design.productSku ?? "SKU");
   const quantity = matchForThis?.lineItem?.quantity ?? design.quantity;
-  const safeSideName = sanitizeForFilename(sideName);
+  // "FRONT 1" → "FRONT1", aby v názve súboru nebola medzera.
+  const safeSideName = sanitizeForFilename(sideLabels(design.sides)[sideIndex].replace(/ (\d+)$/, "$1"));
 
   const filename = `${orderNumber}-D${itemIndex + 1}-${sku}-${safeSideName}-${quantity}ks-${format.toUpperCase()}.png`;
 

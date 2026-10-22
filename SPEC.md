@@ -198,6 +198,12 @@ Zdroj pre: zoznam dizajnov v objednávke, náhľady per strana, tlačové PNG pe
 - PNG: RGBA s **transparentným pozadím**, 300 DPI, rozmer = celá tlačová paleta
   (napr. 4606×5787 px). Alfa kanál je spoľahlivý → automatický orez funguje.
 - Priečinok `SourceFileImages` a `Summary_*.pdf` zo ZIPu výroba nepoužíva.
+- **Viac plôch na jednej strane:** produkt môže mať na jednej strane viac
+  tlačových plôch (napr. zástera s hornou a dolnou plochou na FRONT, overené na
+  #2017). Zakeke vtedy vráti viac `printingFiles` s rovnakým `sideName`
+  (`areaName` je prázdne), líšia sa len segmentom „x" v názve súboru (`_1_`,
+  `_2_`). Tento segment sa na číslovanie nepoužíva — pri jedinej ploche na
+  strane môže byť aj `_2_`.
 
 ## 4. Obrazovky
 
@@ -379,6 +385,13 @@ každú položku** (line item, zo Zakeke):
   môže zdieľať to isté Design ID (vyššie), takže lookup podľa Design ID by
   vždy vrátil prvý výskyt bez ohľadu na to, ktorú kartu si operátor klikol
   (nájdené a opravené pri testovaní objednávky #1779).
+- **Rovnako aj strana sa pri downloade identifikuje podľa indexu** v poli
+  súborov položky (`sideIndex`), **nie podľa názvu strany** — jedna strana môže
+  mať viac plôch s rovnakým `sideName` (§3.3) a lookup podľa názvu by vždy
+  vrátil prvú plochu (nájdené a opravené na #2017). Opakujúce sa názvy strán
+  sa v UI číslujú podľa poradia v rámci strany („FRONT 1", „FRONT 2"; strana
+  s jedinou plochou ostáva bez čísla) — `lib/side-labels.ts`, s unit testami.
+  V názve súboru bez medzery: `…-FRONT1-…`, `…-FRONT2-…`.
 
 ### 4.3 Pomenovanie súborov pri downloade
 
@@ -546,4 +559,6 @@ metafield — appka ho pri zobrazení už nikdy neprepočítava (`custom.deadlin
   z pôvodného „GLS (nevybraná pobočka Packeta)" (§3.1), v detaile objednávky
   zjednotený SAP indikátor („SAP ✓"/„čaká na SAP") a odstránené duplicitné
   surové tagy `SAP processed`/`zasilkovna_selected`/`zasilkovna_unselected`
-  zo zoznamu ostatných tagov (§4.2).
+  zo zoznamu ostatných tagov (§4.2). Oprava: produkty s viacerými tlačovými
+  plochami na jednej strane (napr. zástera, 2× FRONT) — download podľa
+  `sideIndex`, popisky „FRONT 1"/„FRONT 2" (§3.3, §4.2).
