@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { MatchedDesign } from "@/lib/match-designs";
 import { printedItemKey } from "@/lib/shopify/printed-items";
 import { sideLabels } from "@/lib/side-labels";
+import { ItemSap, SapChangedTextile, SapZlRow } from "@/components/SapZlStatus";
 import { ZoomableImage } from "@/components/ZoomableImage";
 
 export function DesignCard({
@@ -11,11 +12,13 @@ export function DesignCard({
   index,
   orderNumber,
   initialPrinted,
+  sap,
 }: {
   matched: MatchedDesign;
   index: number;
   orderNumber: string;
   initialPrinted: boolean;
+  sap: ItemSap | null;
 }) {
   const { design, lineItem } = matched;
   const sku = lineItem?.sku ?? design.productSku ?? "—";
@@ -30,6 +33,7 @@ export function DesignCard({
   const previewLabels = sideLabels(previewImages);
   const downloadLabels = sideLabels(design.sides);
   const itemKey = printedItemKey(design.productSku, design.designId);
+  const changedTextile = sap?.kind === "assigned" ? sap.changedTextile : null;
 
   const [printed, setPrinted] = useState(initialPrinted);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -96,6 +100,10 @@ export function DesignCard({
         </div>
         <span className="design-id">Design ID: {design.designId}</span>
       </div>
+      {/* Samostatný riadok POD hlavičkou, nie v nej — hlavička je na mobile na
+          hranici šírky a jej zalamovanie podľa media query (SPEC.md §4.2) sa
+          nesmie zmeniť. */}
+      {sap && <SapZlRow sap={sap} />}
       {saveError && <p className="printed-toggle-error">{saveError}</p>}
 
       {confirmingUncheck && (
@@ -139,20 +147,30 @@ export function DesignCard({
       )}
 
       <div className="design-card-body">
-        <div className="info-stack">
-          <div className="design-product-name">{productName}</div>
-          {lineItem?.variantTitle && (
-            <span className="variant-chip">{lineItem.variantTitle}</span>
-          )}
-          <div className="line-item-qty">Množstvo: {quantity} ks</div>
+        {changedTextile ? (
+          <div className="info-stack">
+            <SapChangedTextile
+              changedTextile={changedTextile}
+              originalSku={lineItem?.sku ?? design.productSku}
+              originalVariant={lineItem?.variantTitle ?? productName}
+            />
+          </div>
+        ) : (
+          <div className="info-stack">
+            <div className="design-product-name">{productName}</div>
+            {lineItem?.variantTitle && (
+              <span className="variant-chip">{lineItem.variantTitle}</span>
+            )}
+            <div className="line-item-qty">Množstvo: {quantity} ks</div>
 
-          {lineItem && (
-            <div className="line-item-stock">
-              <span>Sklad MERCHYOU: {lineItem.stockMerchyou ?? "—"}</span>
-              <span>Sklad dodávateľa: {lineItem.stockSuppliers ?? "—"}</span>
-            </div>
-          )}
-        </div>
+            {lineItem && (
+              <div className="line-item-stock">
+                <span>Sklad MERCHYOU: {lineItem.stockMerchyou ?? "—"}</span>
+                <span>Sklad dodávateľa: {lineItem.stockSuppliers ?? "—"}</span>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="design-content">
           {previewImages.length > 0 ? (

@@ -224,6 +224,24 @@ h3 {
   font-size: 0.85rem;
 }
 
+.page-header-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+}
+
+/* Vek SAP dát (docs/SAP-INTEGRATION.md §10.4) — aktuálne bežnou farbou textu,
+   neaktuálne šedo (údaje sa stále zobrazujú, len im netreba veriť naslepo). */
+.sap-age {
+  font-size: 0.78rem;
+  color: var(--color-text);
+}
+
+.sap-age--stale {
+  color: var(--color-text-muted);
+}
+
 /* ---------- Zoznam objednávok: triedenie podľa deadlinu ---------- */
 
 .order-toolbar {
@@ -397,6 +415,32 @@ h3 {
   color: var(--color-badge-gls-text);
 }
 
+/* Ďalší dopravcovia zo SAP (docs/SAP-INTEGRATION.md §10.2) — len čierna/biela/
+   šedá (§9). Badge s rámikom má o 1px menší padding, aby mal rovnakú výšku. */
+.badge--carrier-messenger {
+  background: var(--color-text);
+  color: #fff;
+}
+
+.badge--carrier-pickup {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-text);
+  padding: 2px 8px;
+}
+
+.badge--carrier-other {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  padding: 2px 8px;
+}
+
+/* V bunke tabuľky bez odsadenia zhora (na karte ho .order-badges má). */
+.order-badges--inline {
+  margin-top: 0;
+}
+
 .badge--sap-pending {
   background: var(--color-warning-bg);
   color: var(--color-warning-text);
@@ -444,6 +488,31 @@ h3 {
 .order-table-sku-col,
 .order-table-nowrap-col {
   white-space: nowrap;
+}
+
+/* Zoznam ZL môže byť dlhý (#2038: 14 ZL) — zalamuje sa za čiarkami. Pevná
+   šírka (max-width na bunke tabuľky nefunguje), inak by tabuľka pri dlhom
+   zozname zúžila stĺpce Dopravca/SAP a zbytočne zalamovala ich badge. */
+.order-table th.order-table-zl-col,
+.order-table td.order-table-zl-col {
+  width: 15ch;
+}
+
+/* Šírka v tabuľke s automatickým layoutom funguje ako minimum — badge
+   („Osobný odber“, „čaká na SAP“) sa bežne zmestia na 1 riadok, no dlhší
+   text sa stále môže zalomiť (§9: badge bez nowrap). */
+.order-table th.order-table-carrier-col,
+.order-table td.order-table-carrier-col {
+  width: 8.5rem;
+}
+
+.order-table th.order-table-sap-col,
+.order-table td.order-table-sap-col {
+  width: 8rem;
+}
+
+.order-card-zl {
+  overflow-wrap: anywhere;
 }
 
 .order-table th {
@@ -997,6 +1066,134 @@ h3 {
 .design-product-name {
   font-size: 0.9rem;
   line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- SAP: ZL, stav zákazky, zmenený textil (docs/SAP-INTEGRATION.md §10.3) ---------- */
+
+/* "ZL: 212604819 [stav] aktualizované …" — číslo a (pill + čas) sú dva flex
+   prvky; na úzkom displeji sa pill s časom zalomí pod číslo ako celok. */
+.sap-zl-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+  font-size: 0.85rem;
+}
+
+/* Samostatný riadok hneď pod hlavičkou karty (hlavička má margin-bottom 14px). */
+.sap-zl-row--card {
+  margin: -8px 0 12px;
+}
+
+.sap-zl-number {
+  font-weight: 700;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sap-zl-number--unassigned {
+  font-weight: 300;
+  color: var(--color-text-muted);
+}
+
+.sap-zl-label,
+.sap-zl-lines {
+  font-weight: 300;
+  color: var(--color-text-muted);
+}
+
+.sap-zl-status {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+}
+
+/* Neutrálne šedý ako .tag-chip; blokujúce stavy (63, 70) s rovnakým pozadím ako
+   „čaká na SAP“ (§9, žiadna nová farba). */
+.sap-status-pill {
+  display: inline-flex;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.sap-status-pill--warning {
+  background: var(--color-warning-bg);
+  border-color: var(--color-warning-bg);
+  color: var(--color-warning-text);
+}
+
+.sap-synced-at {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+/* Dáta staršie ako 60 min — celý riadok ZL (číslo, pill, čas) sa len jemne
+   spriehľadní. Má pôsobiť ako menej dôležitý údaj, nie ako chyba, preto žiadna
+   výstražná farba ani tučné písmo. */
+.sap-zl-row--stale {
+  opacity: 0.5;
+}
+
+/* Karta čistého textilu: hlavičkou je názov produktu, riadok ZL je pod ňou
+   (rovnaký vzhľad ako na karte dizajnu, len iné odsadenie, keďže táto karta
+   nemá hlavičku s margin-bottom). */
+.line-item-card .sap-zl-row--card {
+  margin: 6px 0 0;
+}
+
+.line-item-info {
+  margin-top: 8px;
+}
+
+.sap-header-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.sap-carrier-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  min-width: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.sap-textile-line {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Nenápadný varovný chip — regular rez, nie bold ako „čaká na SAP“. */
+.sap-change-chip {
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.sap-original-textile {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+  overflow-wrap: anywhere;
 }
 
 /* Mobile: mriežka náhľadov hore, zoznam download tlačidiel pod ňou (kompaktné).

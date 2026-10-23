@@ -3,9 +3,11 @@ import { z } from "zod";
 import { computeSapHistory } from "./history";
 import {
   ESHOP_NUM_AT_CARD_PREFIX,
+  sapPayloadOrderSchema,
   sapSyncPayloadSchema,
   type SapOrder,
   type SapPayloadOrder,
+  type SapSkippedOrder,
   type SapSnapshot,
   type SapSyncPayload,
 } from "./types";
@@ -82,8 +84,26 @@ export function buildSapSnapshot(payload: SapSyncPayload, receivedAt: Date): Sap
   };
 }
 
-function errorResponse(status: number, error: string): Response {
-  return Response.json({ ok: false, error }, { status });
+function errorResponse(status: number, error: string, extra: Record<string, unknown> = {}): Response {
+  return Response.json({ ok: false, error, ...extra }, { status });
+}
+
+// Každá ZL sa validuje samostatne — jedna chybná ZL (napr. prázdny riadok v SAP)
+// nesmie zablokovať celý sync. Neplatné ZL sa vynechajú a vrátia agentovi.
+export function parseSapOrders(rawOrders: unknown[]): { orders: SapPayloadOrder[]; skipped: SapSkippedOrder[] } {
+  const orders: SapPayloadOrder[] = [];
+  const skipped: SapSkippedOrder[] = [];
+  for (const raw of rawOrders) {
+    const parsed = sapPayloadOrderSchema.safeParse(raw);
+    if (parsed.success) {
+      orders.push(parsed.data);
+      continue;
+    }
+    const rawDocNum = typeof raw === "object" && raw !== null ? (raw as { docNum?: unknown }).docNum : undefined;
+    const docNum = typeof rawDocNum === "number" && Number.isFinite(rawDocNum) ? rawDocNum : null;
+    skipped.push({ docNum, reason: z.prettifyError(parsed.error).replace(/\s*\n\s*/g, " ") });
+  }
+  return { orders, skipped };
 }
 
 export async function handleSapSync(request: Request, deps: SapSyncDeps): Promise<Response> {
@@ -110,15 +130,28 @@ export async function handleSapSync(request: Request, deps: SapSyncDeps): Promis
     return errorResponse(400, `Neplatný payload:\n${z.prettifyError(parsed.error)}`);
   }
 
-  const payload = parsed.data;
+  const { orders, skipped } = parseSapOrders(parsed.data.orders);
+  for (const { docNum, reason } of skipped) {
+    console.warn(`SAP sync: ZL ${docNum ?? "(bez docNum)"} vynechaná — ${reason}`);
+  }
+
+  const payload: SapSyncPayload = { ...parsed.data, orders };
   const snapshot = buildSapSnapshot(payload, (deps.now ?? (() => new Date()))());
   const orderCount = Object.values(snapshot.byOrderName).reduce((sum, orders) => sum + orders.length, 0);
 
   // Chyba agenta (prázdny výsledok dotazu, zlý filter) nesmie zmazať celý snapshot.
   // Kontroluje sa po filtri e-shopu — payload len s cudzími ZL by snapshot tiež vyprázdnil.
+  // Platí aj vtedy, keď po vynechaní neplatných ZL nič neostane.
   if (orderCount === 0 && payload.allowEmpty !== true) {
-    const detail = payload.orders.length === 0 ? "Pole orders je prázdne" : "Žiadna ZL nemá numAtCard merchyou.shop:#…";
-    return errorResponse(400, `${detail} — snapshot by sa vymazal. Ak je to zámer, pošli "allowEmpty": true.`);
+    const detail =
+      parsed.data.orders.length === 0
+        ? "Pole orders je prázdne"
+        : orders.length === 0
+          ? "Všetky ZL sú neplatné"
+          : "Žiadna ZL nemá numAtCard merchyou.shop:#…";
+    return errorResponse(400, `${detail} — snapshot by sa vymazal. Ak je to zámer, pošli "allowEmpty": true.`, {
+      skipped,
+    });
   }
 
   try {
@@ -129,7 +162,9 @@ export async function handleSapSync(request: Request, deps: SapSyncDeps): Promis
   }
 
   const shopifyOrders = Object.keys(snapshot.byOrderName).length;
-  console.log(`SAP sync: agent=${payload.agent}, ZL=${orderCount}, objednávky=${shopifyOrders}, syncedAt=${snapshot.syncedAt}`);
+  console.log(
+    `SAP sync: agent=${payload.agent}, ZL=${orderCount}, objednávky=${shopifyOrders}, vynechané=${skipped.length}, syncedAt=${snapshot.syncedAt}`
+  );
 
-  return Response.json({ ok: true, orders: orderCount, shopifyOrders });
+  return Response.json({ ok: true, orders: orderCount, shopifyOrders, skipped });
 }

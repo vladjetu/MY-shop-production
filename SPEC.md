@@ -241,9 +241,15 @@ zdrojom pravdy pre textil, stav zákazky a dopravcu. Jedna Shopify objednávka
   funguje ako pred integráciou.
 - **Dáta sú aktuálne len počas AVD relácie** (agent tam beží) — UI musí
   ukazovať vek dát (`syncedAt`).
-- Testovacie nástroje: `tools/sap-agent/` (`sample-payload.json`,
-  `test-sync.ps1`).
-- Stav: v1.3 backend hotový, UI ešte nie (docs/SAP-INTEGRATION.md §10).
+- Agent: `tools/sap-agent/sap-sync-agent.ps1` (docs/SAP-INTEGRATION.md §12).
+  Testovacie nástroje: `tools/sap-agent/` (`sample-payload.json`,
+  `test-sync.ps1` — prepíše produkčný snapshot vzorovými dátami).
+- **UI (v1.3):** stĺpec ZL, dopravca zo SAP a vek dát v zozname (§4.1), ZL so
+  stavom, zmenený textil a čistý textil v detaile (§4.2). Dáta výhradne zo
+  snapshotu (`lib/sap/snapshot.ts`); párovanie položiek so ZL
+  `lib/sap/match.ts`, zobrazovacie pravidlá (dopravca, stav, vek dát, časy)
+  `lib/sap/display.ts` — obe s unit testami (`npm test`). Deadline sa
+  zo SAP nikdy neberie (§5).
 
 ## 4. Obrazovky
 
@@ -260,6 +266,26 @@ Mobile-first zoznam/karty, na desktope tabuľka. Pre každú objednávku:
 - Badge dopravcu: Packeta / GLS — **bez pobočky Packety** (v1.2, skôr sa
   vypisovala aj v zozname; teraz už len v detaile objednávky, §4.2, kde je aj
   poznámka/adresa výdajného miesta, ktoré ju potvrdzujú).
+  **Dopravca zo SAP (v1.3):** ak má objednávka ZL v SAP snapshote, dopravca sa
+  určí podľa **kódu** `shipping.code` (nie názvu): 11 Packeta, 19 Packeta
+  kuriér, 2 GLS, 10 Messenger, 1 Osobný odber, iný kód → názov zo SAP
+  (docs/SAP-INTEGRATION.md §10.2). Štýly len z brandingu (§9): Packeta aj
+  Packeta kuriér tyrkysový, GLS šedý, Messenger plná `#231f20` s bielym
+  textom, Osobný odber biele pozadie s tmavým 1px rámikom, neznámy svetlošedý
+  rámik. Viac rôznych dopravcov v ZL jednej objednávky → viac badge (každý
+  raz). Bez ZL → ako doteraz podľa Shopify tagov. Pobočka sa v zozname
+  nezobrazuje ani pri SAP dopravcovi.
+- **ZL (v1.3)** — desktop: stĺpec „ZL", mobil: riadok „ZL …" pod počtom SKU.
+  Posledné 4 číslice `docNum` všetkých ZL objednávky, vzostupne, oddelené
+  „, " (napr. `4829, 4830, 4831`); bez ZL v snapshote „—". Dlhý zoznam
+  (#2038: 14 ZL) sa zalamuje za čiarkami — stĺpec má pevnú šírku, aby
+  nezúžil stĺpce Dopravca/SAP; tie majú tiež minimálnu šírku, aby sa ich
+  badge bežne nezalamovali (zalomiť sa však stále vedia, §9).
+- **Vek SAP dát (v1.3)** — vedľa aktuálneho dátumu nad zoznamom malý text
+  „SAP: pred X min" (zo `syncedAt` snapshotu, počítané na serveri pri
+  renderi). Dáta staršie ako 60 min → šedý text „SAP dáta neaktuálne
+  (pred X h)" (údaje sa stále zobrazujú). Bez snapshotu sa nezobrazí nič
+  a zoznam funguje ako pred SAP integráciou.
 - Badge „čaká na SAP" ak chýba tag `SAP processed`
 - **Riadok pod nadpisom „Nevybavené objednávky" (v1.2)**, rovnaký na mobile
   aj desktope, zoskupuje dva ovládacie/informačné prvky týkajúce sa deadlinu
@@ -360,6 +386,24 @@ upozorní a ponúkne „Načítať aktuálnu verziu" alebo „Použiť moju verz
 (Cez `sendBeacon` sa konflikt rozpoznať nedá — „fire-and-forget", žiadna
 odpoveď — zistí sa až pri ďalšom zápise.)
 
+**SAP v hlavičke detailu (v1.3)** — len ak má objednávka ZL v snapshote:
+
+- **Dopravca zo SAP** (rovnaké mapovanie a štýly ako v zozname, §4.1). Jeden
+  dopravca → jeden badge bez čísel ZL. Viac dopravcov → riadok na každého vo
+  formáte `GLS – ZL 4819, 4820`.
+- **Pobočka Packety** zo SAP (`pickupPointName`) **len pri kóde 11** —
+  pri iných kódoch v SAP môžu zostať staré údaje o pobočke (napr. #2040:
+  Osobný odber, ale v SAP aj Shopify stále Z-BOX), preto sa vtedy
+  nezobrazuje vôbec. Kód 11 bez pobočky v SAP → pobočka zo Shopify.
+- **ZL bez priradenej položky** (ZL s dizajnom, ktorá nesedí na žiadnu
+  kartu, docs/SAP-INTEGRATION.md §7 krok 4; ZL s čistým textilom bez
+  zodpovedajúcej položky; ZL bez `docType`): riadok „ZL bez priradenej
+  položky: ZL 4831 · {popis textilu zo SAP} · {pill stavu} {čas}". Čistý
+  textil s položkou sa v hlavičke nezobrazuje — jeho ZL je na karte položky
+  (nižšie). Doťahuje
+  sa na pozadí spolu s položkami (potrebuje Zakeke dizajny), zvyšok hlavičky
+  na neho nečaká.
+
 Potom sekcia **„Položky (N SKU · M ks spolu)"** — zámerne nie „Dizajny"
 (počíta všetky SKU objednávky, nie len personalizované) — s **kartou pre
 každú položku** (line item, zo Zakeke):
@@ -381,6 +425,50 @@ každú položku** (line item, zo Zakeke):
   rozpoznávanie telefónnych čísel v iOS Safari — vyvrátené tým, že sa to isté
   dialo aj na Androide; `metadata.formatDetection` v `app/layout.tsx` je
   napriek tomu ponechané ako všeobecne rozumné vypnutie tejto automatiky.)
+- **Riadok ZL (v1.3)** — `ZL: 212604819` (celé číslo) na **samostatnom
+  riadku hneď pod hlavičkou karty**, nie v nej: hlavička je na mobile na
+  hranici šírky a jej zalamovanie podľa media query (vyššie) sa nemení
+  (overené Playwright na 390, 412 aj 1280 px — všetky hlavičky kariet
+  rovnako vysoké, žiadne horizontálne pretečenie). Za číslom pill so
+  **stavom zákazky** zo SAP (text z číselníka, napr. „Na ceste") a vedľa
+  drobným šedým písmom „aktualizované {d. m. hh:mm}" zo `syncedAt`
+  (Europe/Bratislava). Pill je neutrálne šedý, stavy 63 Nedostupný textil
+  a 70 Prerušená výroba/Prestoj majú pozadie `--color-warning-bg`. Ak je
+  `syncedAt` starší než 60 min, celý riadok ZL (číslo, pill aj čas) sa jemne
+  spriehľadní (`opacity: 0.5`) — žiadna výstražná farba ani tučné písmo,
+  údaj má pôsobiť ako menej dôležitý, nie ako chyba. ZL bez stavu v SAP →
+  len čas, bez pillu. Na úzkom displeji sa pill s časom zalomí
+  pod číslo ZL ako celok. Karta, ku ktorej sa ZL nenašla (§7
+  docs/SAP-INTEGRATION.md), ukáže šedé „ZL: nepriradené". Objednávka bez ZL
+  v snapshote (alebo bez snapshotu) → karta bez riadku ZL, ako predtým.
+- **Párovanie položky so ZL** (`lib/sap/match.ts`, docs/SAP-INTEGRATION.md
+  §7): kandidáti len ZL s `docType "5"`. Páruje sa **skupina kariet s
+  rovnakým Design ID** (Zakeke „aplikovať na všetky veľkosti" = viac kariet,
+  ale v SAP jedna ZL s viacerými riadkami, #2046), nie samotné SKU — to isté
+  SKU býva vo viacerých ZL tej istej objednávky (#2038). Primárne podľa
+  pôvodného SKU (`originalLines`), fallback bez histórie: presná zhoda SKU →
+  iný variant toho istého originálneho produktu (dohľadanie originálu podľa
+  SKU ako pri skladoch, §3.1) → vylučovacia metóda → „ZL: nepriradené".
+- **Čistý textil (v1.3)** — karty položiek bez personalizácie (sekcia
+  „Ostatné položky (bez personalizácie)" aj „Iba textil bez potlače") majú
+  rovnaký riadok ZL so stavom a časom synchronizácie, ako personalizované:
+  samostatný riadok pod hlavičkou karty (tou je názov produktu). Párujú sa
+  so ZL s `docType "3"` — každá položka podľa pôvodného SKU
+  (`originalLines`), fallback presná zhoda SKU; viac položiek čistého textilu
+  zdieľa jednu ZL. Zmena textilu v SAP sa zobrazí rovnako ako pri
+  personalizovanej položke (nižšie).
+- **Zmenený textil (v1.3)** — ak má priradená ZL `textileChange`, hlavný
+  údaj o textile je aktuálny textil zo SAP (`lines[].description` a
+  množstvo) namiesto názvu produktu a variantu zo Shopify; pod ním nenápadný
+  varovný chip „Zmenené v SAP {d. m. rrrr hh:mm} · {iniciály}" (používateľ
+  SAP len iniciálami: „Vladimír Horvát" → „VH", jednoslovné meno, napr.
+  „B1i", celé; v snapshote zostáva celé meno) a menším prečiarknutým textom
+  „pôvodne objednané: {SKU zo Shopify} {variant}" (napr. „pôvodne objednané:
+  G000822 White / L"). Skladové
+  hodnoty Shopify sa pri zmenenom textile nezobrazujú (patria k pôvodnému
+  SKU). Pri fallbacku bez histórie rovnaký chip bez času — „Zmenené v SAP"
+  (iný variant), „Zmenené v SAP · skontroluj" (vylučovacia metóda). Dlhý
+  popis textilu sa zalamuje (nič nepreteká).
 - **Checkbox „Vytlačené"** vždy plne viditeľný (mimo stlmenej časti nižšie —
   inak by sa po označení ťažšie hľadal na odznačenie). Dotyková plocha min.
   44×44 px (samotný vizuálny štvorček je menší, 18px — dotykovú plochu dopĺňa
@@ -526,6 +614,19 @@ metafield — appka ho pri zobrazení už nikdy neprepočítava (`custom.deadlin
    dodania ako order metafield (§5); zoznam objednávok zobrazuje „Vytvorená"
    a „Deadline" čítané z tohto metafieldu, s červeným zvýraznením po termíne,
    bez prepočtu pri zobrazení.
+8. **SAP (v1.3):** v zozname pri #2045 vidím 5 ZL (`4829, 4830, 4831, 4832,
+   4833`). V detaile #2045 vidím 4 karty s ZL 212604829/831/832/833 a na
+   karte položky bez personalizácie (446502) „ZL: 212604830" (v hlavičke
+   detailu žiadny riadok „Čistý textil"); pri 2 položkách chip „Zmenené v SAP
+   19. 10. 2026 12:25 · VH" (ZL 4829, „pôvodne objednané: 752002 Natural
+   Raw / L") a „Zmenené v SAP 19. 10. 2026 12:31 · VH" (ZL 4833, „pôvodne
+   objednané: G000822 White / L"), aktuálny textil zo SAP s veľkosťou M. Pri
+   #2040 vidím dopravcu „Osobný odber" bez pobočky (v zozname aj v detaile).
+   Pri SAP dátach starších ako 60 min je riadok ZL na kartách jemne
+   spriehľadnený (bez výstražnej farby) a nad zoznamom je šedé „SAP dáta
+   neaktuálne (pred X h)"; badge dopravcu ani stĺpec ZL sa nemenia. Jedna
+   chybná ZL zo SAP nezablokuje sync ostatných (vráti sa v `skipped`).
+   Deadline sa nemení a naďalej sa číta z metafieldu.
 
 ## 8. Postup vývoja (odporúčané poradie pre Claude Code)
 
@@ -609,4 +710,18 @@ metafield — appka ho pri zobrazení už nikdy neprepočítava (`custom.deadlin
   pred prázdnym snapshotom), výpočet zmeny textilu zo SAP Change logu
   (`lib/sap/history.ts`), snapshot v Upstash Redis (`sap:snapshot:v1`) a jeho
   čítanie s cache 60 s (`lib/sap/snapshot.ts`), testovacie nástroje
-  `tools/sap-agent/`. UI zatiaľ bez zmeny.
+  `tools/sap-agent/` a agent `sap-sync-agent.ps1` (avd-ps-1.3).
+  **UI v1:** stĺpec/riadok „ZL", dopravca zo SAP podľa kódu (nové badge
+  Messenger, Osobný odber, iný), vek SAP dát nad zoznamom (§4.1); v detaile
+  dopravca zo SAP (viac dopravcov → riadok na každého s číslami ZL), pobočka
+  Packety len pri kóde 11, riadok „ZL: …" so stavom zákazky a časom
+  synchronizácie pod hlavičkou karty (aj na kartách čistého textilu, ZL
+  s `docType "3"`), pri neaktuálnych dátach jemne spriehľadnený; zmenený
+  textil zo SAP s časom a iniciálami autora zmeny a „pôvodne objednané:
+  {SKU} {variant}"; „ZL bez priradenej položky" v hlavičke (§4.2).
+  Párovanie podľa Design ID skupín a čistého textilu podľa SKU
+  (`lib/sap/match.ts`), zobrazovacie pravidlá `lib/sap/display.ts`, obe
+  s unit testami; akceptačné kritérium §7 bod 8. Tolerancia chybných ZL
+  v `/api/sap-sync` (každá ZL validovaná samostatne, vynechané v `skipped`,
+  povolené prázdne SAP polia) a agent avd-ps-1.3 (`try/catch` okolo syncu, vypnutý QuickEdit, `generatedAt` pred čítaním zo SAP,
+  log vynechaných ZL) — docs/SAP-INTEGRATION.md §8, §12.

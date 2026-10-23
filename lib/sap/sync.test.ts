@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { handleSapSync, MAX_BODY_BYTES } from "./sync";
-import { sapSyncPayloadSchema, type SapSnapshot } from "./types";
+import { sapPayloadOrderSchema, sapSyncPayloadSchema, type SapSnapshot } from "./types";
 
 const SECRET = "test-secret-123";
 const SAMPLE_PATH = join(process.cwd(), "tools", "sap-agent", "sample-payload.json");
@@ -39,7 +39,7 @@ test("vzorový payload prejde schémou", () => {
   assert.ok(result.success, result.success ? "" : result.error.message);
 });
 
-test("schéma odmietne updatedAt s časovou zónou, číselný status a textový kód dopravy", () => {
+test("schéma ZL odmietne updatedAt s časovou zónou, číselný status a textový kód dopravy", () => {
   for (const mutate of [
     (o: any) => (o.updatedAt = "2026-10-19T12:25:19+02:00"),
     (o: any) => (o.status = 21),
@@ -47,10 +47,19 @@ test("schéma odmietne updatedAt s časovou zónou, číselný status a textový
     (o: any) => delete o.lines[0].lineNum,
     (o: any) => delete o.history,
   ]) {
-    const payload = samplePayload();
-    mutate(payload.orders[0]);
-    assert.equal(sapSyncPayloadSchema.safeParse(payload).success, false);
+    const order = samplePayload().orders[0];
+    mutate(order);
+    assert.equal(sapPayloadOrderSchema.safeParse(order).success, false);
   }
+});
+
+test("schéma ZL povolí prázdne SAP polia: status, docType, priority, popis, itemCode a množstvo 0", () => {
+  const order = samplePayload().orders[0];
+  order.status = null;
+  order.docType = null;
+  order.priority = null;
+  order.lines.push({ lineNum: 5, itemCode: null, description: null, quantity: 0 });
+  assert.ok(sapPayloadOrderSchema.safeParse(order).success);
 });
 
 test("zlý secret → 401 bez detailov, nič sa neuloží", async () => {
@@ -72,14 +81,61 @@ test("chýbajúci SAP_SYNC_SECRET na serveri → 401 aj pri akomkoľvek secrete"
   assert.equal(saved.length, 0);
 });
 
-test("neplatný payload → 400 s popisom chyby", async () => {
+test("neplatná obálka payloadu → 400 s popisom chyby", async () => {
   const payload = samplePayload();
-  payload.orders[0].docNum = "212604829";
+  payload.schemaVersion = 2;
   const { response, saved } = await runSync(payload);
   assert.equal(response.status, 400);
   const body = await response.json();
   assert.equal(body.ok, false);
-  assert.match(body.error, /docNum/);
+  assert.match(body.error, /schemaVersion/);
+  assert.equal(saved.length, 0);
+});
+
+test("neplatná ZL sa vynechá, ostatné sa uložia a vynechané sa vrátia v skipped", async () => {
+  const payload = samplePayload();
+  payload.orders[0].lines[0].quantity = -1; // 212604829
+  payload.orders[1].docNum = "212604830"; // docNum nie je číslo → v skipped null
+
+  const { response, saved } = await runSync(payload);
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.ok, true);
+  assert.equal(body.orders, 6);
+  assert.deepEqual(
+    body.skipped.map((s: { docNum: number | null }) => s.docNum),
+    [212604829, null]
+  );
+  assert.match(body.skipped[0].reason, /quantity/);
+  assert.match(body.skipped[1].reason, /docNum/);
+  assert.deepEqual(
+    saved[0].byOrderName["#2045"].map((o) => o.docNum),
+    [212604831, 212604832, 212604833]
+  );
+});
+
+test("ZL s prázdnymi SAP poľami sa uloží (nezablokuje sync)", async () => {
+  const payload = samplePayload();
+  payload.orders[2].status = null;
+  payload.orders[2].docType = null;
+  payload.orders[2].lines.push({ lineNum: 9, itemCode: null, description: null, quantity: 0 });
+
+  const { response, saved } = await runSync(payload);
+  assert.equal(response.status, 200);
+  assert.deepEqual((await response.json()).skipped, []);
+  const zl = saved[0].byOrderName["#2045"].find((o) => o.docNum === 212604831);
+  assert.equal(zl?.status, null);
+  assert.equal(zl?.docType, null);
+});
+
+test("všetky ZL neplatné → 400 (ochrana pred prázdnym snapshotom) so zoznamom skipped", async () => {
+  const payload = samplePayload();
+  for (const order of payload.orders) order.status = 21;
+  const { response, saved } = await runSync(payload);
+  assert.equal(response.status, 400);
+  const body = await response.json();
+  assert.match(body.error, /Všetky ZL sú neplatné/);
+  assert.equal(body.skipped.length, 8);
   assert.equal(saved.length, 0);
 });
 
@@ -103,7 +159,7 @@ test("prázdne orders → 400, s allowEmpty: true sa uloží prázdny snapshot",
 
   const allowed = await runSync({ ...payload, allowEmpty: true });
   assert.equal(allowed.response.status, 200);
-  assert.deepEqual(await allowed.response.json(), { ok: true, orders: 0, shopifyOrders: 0 });
+  assert.deepEqual(await allowed.response.json(), { ok: true, orders: 0, shopifyOrders: 0, skipped: [] });
   assert.deepEqual(allowed.saved[0].byOrderName, {});
 });
 
@@ -115,7 +171,7 @@ test("filter e-shopu: ZL bez prefixu merchyou.shop:# sa ignorujú", async () => 
 
   const { response, saved } = await runSync(payload);
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { ok: true, orders: 5, shopifyOrders: 2 });
+  assert.deepEqual(await response.json(), { ok: true, orders: 5, shopifyOrders: 2, skipped: [] });
   assert.deepEqual(
     saved[0].byOrderName["#2045"].map((o) => o.docEntry),
     [52020, 52021]
@@ -136,7 +192,7 @@ test("zoskupenie podľa order name, zoradenie podľa docNum, výsledok histórie
 
   const { response, saved } = await runSync(payload);
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { ok: true, orders: 8, shopifyOrders: 2 });
+  assert.deepEqual(await response.json(), { ok: true, orders: 8, shopifyOrders: 2, skipped: [] });
 
   const snapshot = saved[0];
   assert.equal(snapshot.syncedAt, "2026-10-22T14:05:00+02:00");

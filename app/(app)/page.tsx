@@ -1,9 +1,10 @@
 import { formatSlovakDayDate, isOverdue } from "@/lib/format";
+import { formatSapAge, formatZlShortList, sapCarrierGroups } from "@/lib/sap/display";
+import { getSapSnapshot } from "@/lib/sap/snapshot";
 import {
   ShopifyOrder,
   fetchUnfulfilledOrders,
-  getCarrier,
-  getCarrierLabel,
+  getShopifyCarrierBadge,
   getTotalQuantity,
   hasSapProcessed,
 } from "@/lib/shopify/orders";
@@ -15,6 +16,10 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   let orders: ShopifyOrder[] = [];
   let loadError: string | null = null;
+
+  // SAP snapshot (Upstash) sa číta paralelne so Shopify. Nikdy nehádže — bez
+  // snapshotu (null) sa zoznam správa ako pred SAP integráciou (§10.4).
+  const sapSnapshotPromise = getSapSnapshot();
 
   try {
     orders = await fetchUnfulfilledOrders();
@@ -58,11 +63,15 @@ export default async function HomePage() {
     return `${order.lineItems.length} SKU · ${getTotalQuantity(order)} ks`;
   }
 
+  const sapSnapshot = await sapSnapshotPromise;
+  const sapAge = sapSnapshot ? formatSapAge(sapSnapshot.syncedAt) : null;
+
   // Triedenie/vyhľadávanie sa rieši na klientovi (rádovo desiatky objednávok, ďalší
   // request na server by bol zbytočný) — sem sa preto pripraví len obyčajné,
   // serializovateľné pole (žiadne funkcie/Set), ktoré prevezme klientský komponent.
   const orderRows: OrderRow[] = orders.map((order) => {
     const bareNumber = order.orderNumber.replace("#", "");
+    const zls = sapSnapshot?.byOrderName[order.orderNumber] ?? [];
     return {
       orderNumber: order.orderNumber,
       orderNumberValue: Number(bareNumber),
@@ -70,11 +79,16 @@ export default async function HomePage() {
       createdAt: order.createdAt,
       customerName: order.customerName,
       skuLabel: getSkuLabel(order),
-      carrier: getCarrier(order.tags),
+      zlLabel: formatZlShortList(zls.map((zl) => zl.docNum)),
+      // Dopravca zo SAP, ak má objednávka ZL (viac rôznych dopravcov → viac
+      // badge), inak podľa Shopify tagov (docs/SAP-INTEGRATION.md §10.2).
       // Bez pobočky Packety — v zozname stačí "Packeta", konkrétnu pobočku
       // vidno až v detaile objednávky (kde je aj poznámka/adresa výdajného
       // miesta, ktoré potvrdzujú, že ide o správnu pobočku).
-      carrierLabel: getCarrierLabel(order.tags),
+      carriers:
+        zls.length > 0
+          ? sapCarrierGroups(zls).map(({ key, label }) => ({ key, label }))
+          : [getShopifyCarrierBadge(order.tags)],
       sapDone: hasSapProcessed(order.tags),
       deliveryDeadline: order.deliveryDeadline,
       overdue: isOverdue(order.deliveryDeadline),
@@ -87,7 +101,13 @@ export default async function HomePage() {
         <h2 className="page-title">
           Nevybavené objednávky{loadError ? "" : ` (${orders.length})`}
         </h2>
-        <span className="current-date">{formatSlovakDayDate()}</span>
+        <span className="page-header-meta">
+          <span className="current-date">{formatSlovakDayDate()}</span>
+          {/* Vek SAP dát (§10.4) — počíta sa na serveri pri renderi, bez snapshotu nič. */}
+          {sapAge && (
+            <span className={`sap-age${sapAge.stale ? " sap-age--stale" : ""}`}>{sapAge.text}</span>
+          )}
+        </span>
       </div>
 
       {loadError && <div className="error-banner">{loadError}</div>}

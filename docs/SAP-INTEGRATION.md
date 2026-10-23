@@ -2,8 +2,9 @@
 
 > Zdroj pravdy pre všetko, čo súvisí so SAP. SPEC.md naň odkazuje (§3.4).
 > Pri zmene správania SAP integrácie aktualizuj **tento súbor aj SPEC.md**.
-> Stav: návrh v1, overené testami 21.–22. 10. 2026 (všetky polia v §5
-> potvrdené reálnymi dátami, okrem prevádzky agenta v §12).
+> Stav: v1 — backend, agent (§12) aj UI (§10) hotové; overené testami
+> 21.–23. 10. 2026 (všetky polia v §5 potvrdené reálnymi dátami, UI nad
+> reálnym snapshotom). Otvorené: prevádzka agenta mimo AVD relácie (§12).
 
 ## 1. Cieľ a rozsah v1
 
@@ -13,13 +14,15 @@ adresu), robí to **len v SAP**. Appka preto musí ukazovať údaje zo SAP tam,
 kde je SAP zdrojom pravdy.
 
 **V1 zobrazí:**
+
 - v zozname objednávok stĺpec **ZL** (posledné 4 číslice SAP zákaziek),
 - dopravcu podľa SAP (zoznam aj detail),
-- pri každom dizajne v detaile číslo SAP zákazky (`ZL: 212604819`),
-- pri dizajne, ktorého textil support zmenil v SAP, aktuálny textil zo SAP
-  a „Zmenené v SAP {dátum čas} · {kto}“ (z histórie zmien SAP),
+- pri každej položke v detaile (s dizajnom aj čistý textil) číslo SAP
+  zákazky (`ZL: 212604819`),
+- pri položke, ktorej textil support zmenil v SAP, aktuálny textil zo SAP
+  a „Zmenené v SAP {dátum čas} · {iniciály}“ (z histórie zmien SAP),
 - pri každom ZL v detaile **stav zákazky zo SAP** (napr. „Na ceste“) a čas
-  poslednej synchronizácie so SAP (zvýraznený, ak sú dáta neaktuálne).
+  poslednej synchronizácie so SAP (pri neaktuálnych dátach jemne spriehľadnený).
 
 **Mimo v1 (neskôr):** dodacia adresa zo SAP, priorita v UI, ručné
 priradenie dizajnu k ZL, reklamácie, automatizácia dodávok (§13),
@@ -27,15 +30,15 @@ merchshop.com (mimo rozsahu projektu).
 
 ## 2. Prostredie SAP
 
-| Položka | Hodnota |
-|---|---|
-| SAP | Business One 10.0 FP 2208 (verzia DI API `1000200`) |
-| Databáza | MS SQL 2019, server `C002SRAZSAPDB01`, DB `Merchyou_prod` |
-| Prístup | Windows App → Azure Virtual Desktop, session host `C002AVDSAP-0` |
-| DI API | `C:\Program Files\SAP\SAP Business One DI API` (64-bit), COM `SAPbobsCOM.Company`, `DbServerType = 15` (MSSQL 2019) |
-| SAP user pre čítanie | Vladov SAP user (`usr9`) |
-| Service Layer | z AVD nedostupný (porty 50000/50001/40000 → timeout). S partnerom sa nerieši. |
-| Odchádzajúci internet z AVD | funguje (HTTPS POST cez `Invoke-RestMethod` overený, nutné TLS 1.2) |
+| Položka                     | Hodnota                                                                                                             |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| SAP                         | Business One 10.0 FP 2208 (verzia DI API `1000200`)                                                                 |
+| Databáza                    | MS SQL 2019, server `C002SRAZSAPDB01`, DB `Merchyou_prod`                                                           |
+| Prístup                     | Windows App → Azure Virtual Desktop, session host `C002AVDSAP-0`                                                    |
+| DI API                      | `C:\Program Files\SAP\SAP Business One DI API` (64-bit), COM `SAPbobsCOM.Company`, `DbServerType = 15` (MSSQL 2019) |
+| SAP user pre čítanie        | Vladov SAP user (`usr9`)                                                                                            |
+| Service Layer               | z AVD nedostupný (porty 50000/50001/40000 → timeout). S partnerom sa nerieši.                                       |
+| Odchádzajúci internet z AVD | funguje (HTTPS POST cez `Invoke-RestMethod` overený, nutné TLS 1.2)                                                 |
 
 ## 3. Architektúra — „pull agent“
 
@@ -93,8 +96,7 @@ merchshop.com (mimo rozsahu projektu).
     - ZL 52017: log v1–v2 = `752002` (L), aktuálne `752001` (M), `ORDR`
       UpdateDate 19. 10. 2026, UpdateTS `122519`, Vladimír Horvát →
       zmena 19. 10. 2026 12:25:19.
-    - ZL 52021: log v1–v3 = `G000822` (L), v4 = `G000821` (M) s pečiatkou
-      19. 10. 2026 12:31:00 Vladimír Horvát; aktuálna verzia (M) s pečiatkou
+    - ZL 52021: log v1–v3 = `G000822` (L), v4 = `G000821` (M) s pečiatkou 19. 10. 2026 12:31:00 Vladimír Horvát; aktuálna verzia (M) s pečiatkou
       13:16:29 `B1i` — integrácia zákazku neskôr upravila bez zmeny textilu.
       Čas zmeny textilu je preto pečiatka **prvej** verzie s aktuálnym
       textilom, nie posledná úprava.
@@ -116,23 +118,23 @@ merchshop.com (mimo rozsahu projektu).
 
 ### 5.1 Hlavička zákazky — `ORDR`
 
-| SQL pole | V SAP UI | Použitie |
-|---|---|---|
-| `DocEntry` | — | interné ID (stabilný kľúč) |
-| `DocNum` | Čís. (napr. 212604819) | číslo ZL zobrazované v appke |
-| `NumAtCard` | Ref.čís.odberateľa | kľúč na Shopify objednávku |
-| `DocStatus` | Status | filter: len `O` |
-| `CANCELED` | — | filter: len `N` |
-| `U_SFT_DOCTYPE` | Typ dokumentu | kód: `5` On demand (dizajn), `3` Predaj textilu |
-| `U_SFT_SPECIAL` | Špeciálny typ | `-` žiadny, `REKLAM` reklamácia (ďalej DAR, PROMO, SKLAD, SPONZOR, TEST) |
-| `U_SFT_STATUS` | Status zákazky | číselník §5.3 — zdroj pravdy pre stav |
-| `U_SFT_PRIORITY` | Priorita | `H` Vysoká, `S` Štandardná |
-| `U_SFT_NOPRINT` | Zákazka bez potlače | `Y` = čistý textil |
-| `TrnspCode` → `OSHP.TrnspName` | Logistika → Druh expedície | dopravca podľa SAP (číselník §5.3) |
-| `U_PICKUPID`, `U_PICKUPNAME` | — | výdajné miesto Packeta — platné len pri `TrnspCode = 11` |
-| `Address2` | Logistika → Dodacia adresa | v1 sa neposiela (§1); riadky oddelené CR/LF |
-| `U_SFT_TRACKNO`, `U_SFT_SHIPDATE` | Tracking, Dátum odoslania | v1 sa neposiela; `30.12.1899` = prázdne |
-| `DocDueDate`, `U_DocDDate` | Dátum dodávky | **nepoužívať** — deadline počíta appka (SPEC §5) |
+| SQL pole                          | V SAP UI                   | Použitie                                                                 |
+| --------------------------------- | -------------------------- | ------------------------------------------------------------------------ |
+| `DocEntry`                        | —                          | interné ID (stabilný kľúč)                                               |
+| `DocNum`                          | Čís. (napr. 212604819)     | číslo ZL zobrazované v appke                                             |
+| `NumAtCard`                       | Ref.čís.odberateľa         | kľúč na Shopify objednávku                                               |
+| `DocStatus`                       | Status                     | filter: len `O`                                                          |
+| `CANCELED`                        | —                          | filter: len `N`                                                          |
+| `U_SFT_DOCTYPE`                   | Typ dokumentu              | kód: `5` On demand (dizajn), `3` Predaj textilu                          |
+| `U_SFT_SPECIAL`                   | Špeciálny typ              | `-` žiadny, `REKLAM` reklamácia (ďalej DAR, PROMO, SKLAD, SPONZOR, TEST) |
+| `U_SFT_STATUS`                    | Status zákazky             | číselník §5.3 — zdroj pravdy pre stav                                    |
+| `U_SFT_PRIORITY`                  | Priorita                   | `H` Vysoká, `S` Štandardná                                               |
+| `U_SFT_NOPRINT`                   | Zákazka bez potlače        | `Y` = čistý textil                                                       |
+| `TrnspCode` → `OSHP.TrnspName`    | Logistika → Druh expedície | dopravca podľa SAP (číselník §5.3)                                       |
+| `U_PICKUPID`, `U_PICKUPNAME`      | —                          | výdajné miesto Packeta — platné len pri `TrnspCode = 11`                 |
+| `Address2`                        | Logistika → Dodacia adresa | v1 sa neposiela (§1); riadky oddelené CR/LF                              |
+| `U_SFT_TRACKNO`, `U_SFT_SHIPDATE` | Tracking, Dátum odoslania  | v1 sa neposiela; `30.12.1899` = prázdne                                  |
+| `DocDueDate`, `U_DocDDate`        | Dátum dodávky              | **nepoužívať** — deadline počíta appka (SPEC §5)                         |
 
 ### 5.2 Riadky zákazky — `RDR1`
 
@@ -173,22 +175,22 @@ Filter `ObjType = '17'` (zákazka odberateľa). Kľúč verzie: `DocEntry` +
 1. **Kľúč:** `NumAtCard = "merchyou.shop:" + order.name` (presná zhoda).
    Platí pre D2C (zákazník „ZÁKAZNÍK SK“ / „CUSTOMER EU“) aj B2B zákazky
    z e-shopu.
-2. **1 dizajn = 1 ZL** typu *On demand* (`U_SFT_DOCTYPE = 5`, obsahuje riadok `S000003`). Viac
+2. **1 dizajn = 1 ZL** typu _On demand_ (`U_SFT_DOCTYPE = 5`, obsahuje riadok `S000003`). Viac
    variantov toho istého dizajnu = jedna ZL.
-3. **Všetok čistý textil objednávky = 1 ZL** typu *Predaj textilu*
+3. **Všetok čistý textil objednávky = 1 ZL** typu _Predaj textilu_
    (`U_SFT_DOCTYPE = 3`, `U_SFT_NOPRINT = Y`).
 4. **Reklamačný ZL** má rovnaké `NumAtCard` a `U_SFT_SPECIAL = 'REKLAM'` →
    v1 sa **neposiela** (objednávka je už fulfilled, v appke nie je).
 5. **Zdroje pravdy:**
 
-| Údaj | Zdroj pravdy |
-|---|---|
-| Produkt/variant, ktorý sa vyrába | SAP (riadky ZL) |
-| Stav zákazky | SAP (`U_SFT_STATUS`) |
-| Dopravca, dodacia adresa | SAP (Logistika) |
-| Deadline | appka (Shopify metafield, SPEC §5) — nikdy SAP |
-| Dizajny, tlačové súbory | Zakeke |
-| Zoznam objednávok (unfulfilled) | Shopify |
+| Údaj                             | Zdroj pravdy                                   |
+| -------------------------------- | ---------------------------------------------- |
+| Produkt/variant, ktorý sa vyrába | SAP (riadky ZL)                                |
+| Stav zákazky                     | SAP (`U_SFT_STATUS`)                           |
+| Dopravca, dodacia adresa         | SAP (Logistika)                                |
+| Deadline                         | appka (Shopify metafield, SPEC §5) — nikdy SAP |
+| Dizajny, tlačové súbory          | Zakeke                                         |
+| Zoznam objednávok (unfulfilled)  | Shopify                                        |
 
 6. Status „Odoslané/Odovzdané“ → objednávka sa v Shopify prepne na Fulfilled
    a z appky zmizne.
@@ -212,6 +214,22 @@ Filter `ObjType = '17'` (zákazka odberateľa). Kľúč verzie: `DocEntry` +
 
 Pre jednu objednávku: kandidáti = ZL s `docType = "5"` (On demand), ich produktové riadky
 (bez `S…`). Každá ZL sa priradí nanajvýš jednému dizajnu.
+Implementácia: `lib/sap/match.ts` (unit testy na #2045, #2038, #2046 a
+fallbackoch).
+
+**Dizajn = skupina Zakeke položiek s rovnakým Design ID**, nie jedna
+položka. Zakeke „aplikovať na všetky veľkosti" vytvorí pre každú veľkosť
+samostatnú položku (kartu v appke) s rovnakým Design ID a SAP z nich spraví
+jednu ZL s viacerými riadkami (overené na reálnom snapshote 23. 10. 2026:
+#2046 1 dizajn × 2 veľkosti = 1 ZL, #2030 1 × 4 = 1 ZL). Porovnáva sa preto
+multimnožina SKU + množstvo celej skupiny s riadkami ZL — samotné SKU nestačí,
+lebo to isté SKU býva vo viacerých ZL tej istej objednávky (#2038: `724064`
+v 7 ZL s rôznymi dizajnmi). Ak sa presná zhoda nenájde, skúsi sa zhoda len
+podľa množiny SKU (bez množstva).
+
+Poradie pri rovnakých kandidátoch: skupiny podľa Design ID vzostupne (Zakeke
+ho prideľuje v poradí vzniku), ZL podľa `DocNum` — na #2038 sa obe poradia
+zhodujú.
 
 0. **Podľa pôvodného SKU (primárne):** Zakeke `productSku` = `itemCode`
    v `originalLines` ZL (verzia 1 = pôvodná Shopify objednávka) → priradiť.
@@ -223,13 +241,21 @@ Fallback, ak ZL nemá `originalLines`:
 1. **Presná zhoda:** Zakeke `productSku` = `RDR1.ItemCode` → priradiť.
 2. **Iný variant toho istého produktu:** `ItemCode` je SKU iného variantu
    toho istého **originálneho** Shopify produktu (appka ho už dohľadáva podľa
-   SKU kvôli skladom, SPEC §3.1) → priradiť + upozornenie
-   „Zmenené v SAP: {Dscription}“.
+   SKU kvôli skladom, SPEC §3.1; dopyt sa robí len ak má objednávka ZL bez
+   histórie) → priradiť + chip „Zmenené v SAP“ (bez času — appka ho bez
+   histórie nepozná); karta ukáže textil `{Dscription}` zo SAP ako pri
+   zmene s históriou.
 3. **Vylučovacia metóda:** zostane presne 1 nespárovaný dizajn a 1 nespárovaná
-   ZL → priradiť + upozornenie „Produkt zmenený v SAP: {Dscription} —
-   skontroluj“.
+   ZL (a tá nemá históriu) → priradiť + chip „Zmenené v SAP · skontroluj“,
+   textil `{Dscription}` zo SAP.
 4. **Inak:** dizajn ukáže „ZL: nepriradené“; nespárované ZL sa ukážu
-   v hlavičke detailu. (Ručné priradenie — neskoršia verzia.)
+   v hlavičke detailu. (Ručné priradenie — neskoršia verzia.) ZL s históriou,
+   ktorá nesedí cez pôvodné SKU, sa fallbackom nepáruje — skončí tu.
+
+**Zmena pri dizajne na viacerých kartách:** pri jednej karte je aktuálny
+textil celý obsah ZL. Pri viacerých kartách (veľkostiach) je zmenená len
+karta, ktorej pôvodný riadok v ZL už nie je; dostane všetky nové riadky ZL
+(ktorý nový riadok nahradil ktorý pôvodný, sa z dát určiť nedá).
 
 Prečo zobrazovať zmeny: výroba triedi textil podľa SAP, ale karta dizajnu ukazuje
 variant zo Shopify — bez upozornenia by appka ukazovala inú veľkosť/produkt
@@ -244,12 +270,26 @@ v poradí `DocNum` a duplicity rieši krokom 3/4 — nikdy nehádať potichu.
   `x-sap-sync-secret: <SAP_SYNC_SECRET>`.
 - **Autorizácia:** porovnanie secretu v konštantnom čase
   (`crypto.timingSafeEqual`). Zlý/chýbajúci secret → `401`, bez detailov.
-- **Validácia:** schéma (napr. `zod`), max. veľkosť tela 2 MB. Neplatné →
-  `400` s popisom chyby. Záznamy s `numAtCard`, ktoré nezačínajú na
-  `merchyou.shop:#`, server ignoruje.
-- **Ochrana pred vymazaním:** prázdne pole `orders` sa odmietne (`400`),
-  pokiaľ telo nemá `"allowEmpty": true` (chyba agenta nesmie zmazať všetko).
-- **Odpoveď:** `200 {"ok": true, "orders": <počet ZL>, "shopifyOrders": <počet objednávok>}`.
+- **Validácia:** schéma `zod` (`lib/sap/types.ts`), max. veľkosť tela
+  2 MB. Neplatná obálka (`schemaVersion`, `generatedAt`, `agent`, `orders`
+  nie je pole) → `400` s popisom chyby. Záznamy s `numAtCard`, ktoré
+  nezačínajú na `merchyou.shop:#`, server ignoruje.
+- **Tolerancia chybných ZL:** každá ZL sa validuje **samostatne** — jedna
+  chybná ZL (napr. neúplne vyplnená v SAP) nezablokuje celý sync. Neplatná ZL
+  sa vynechá, server ju zaloguje (`docNum` + dôvod) a vráti v `skipped`;
+  ostatné sa uložia. Povolené (nie chyba): `status`, `docType`, `priority`
+  a `lines[].description` = `null`; v riadkoch `itemCode` = `null`
+  (textový riadok) a `quantity` = 0 (support riadok vynuloval namiesto
+  zmazania). Takéto riadky sa pri párovaní aj pri zobrazení zmeny textilu
+  ignorujú; ZL bez stavu nemá v UI pill; ZL bez `docType` sa nepáruje
+  a zobrazí sa medzi ZL bez priradenej položky (§10.3).
+- **Ochrana pred vymazaním:** ak po filtri e-shopu a vynechaní neplatných ZL
+  neostane žiadna ZL, request sa odmietne (`400`, s `skipped`), pokiaľ telo
+  nemá `"allowEmpty": true` (chyba agenta nesmie zmazať všetko).
+- **Odpoveď:** `200 {"ok": true, "orders": <počet ZL>, "shopifyOrders": <počet
+  objednávok>, "skipped": [{ "docNum": 212604829, "reason": "…" }]}` —
+  `skipped` je vždy prítomné (prázdne pole, ak sa nič nevynechalo);
+  `docNum` je `null`, ak v ZL chýba alebo nie je číslo.
 - Endpoint **nesmie** byť chránený session cookie (volá ho agent), middleware
   ho musí vynechať z presmerovania na `/login`.
 
@@ -277,7 +317,12 @@ v poradí `DocNum` a duplicity rieši krokom 3/4 — nikdy nehádať potichu.
       "updatedAt": "2026-10-19T12:25:19",
       "updatedBy": "Vladimír Horvát",
       "lines": [
-        { "lineNum": 0, "itemCode": "752001", "description": "STTW259, Natural Raw, M", "quantity": 1 }
+        {
+          "lineNum": 0,
+          "itemCode": "752001",
+          "description": "STTW259, Natural Raw, M",
+          "quantity": 1
+        }
       ],
       "history": [
         {
@@ -285,7 +330,12 @@ v poradí `DocNum` a duplicity rieši krokom 3/4 — nikdy nehádať potichu.
           "updatedAt": "2026-10-18T23:51:40",
           "updatedBy": "B1i",
           "lines": [
-            { "lineNum": 0, "itemCode": "752002", "description": "STTW259, Natural Raw, L", "quantity": 1 }
+            {
+              "lineNum": 0,
+              "itemCode": "752002",
+              "description": "STTW259, Natural Raw, L",
+              "quantity": 1
+            }
           ]
         },
         {
@@ -293,7 +343,12 @@ v poradí `DocNum` a duplicity rieši krokom 3/4 — nikdy nehádať potichu.
           "updatedAt": "2026-10-19T07:46:13",
           "updatedBy": "B1i",
           "lines": [
-            { "lineNum": 0, "itemCode": "752002", "description": "STTW259, Natural Raw, L", "quantity": 1 }
+            {
+              "lineNum": 0,
+              "itemCode": "752002",
+              "description": "STTW259, Natural Raw, L",
+              "quantity": 1
+            }
           ]
         }
       ]
@@ -331,22 +386,24 @@ nestornované e-shop ZL okrem `REKLAM` (vrátane statusu 50).
 ## 10. UI v1
 
 ### 10.1 Zoznam objednávok — stĺpec „ZL“
+
 - Posledné 4 číslice `DocNum` všetkých ZL objednávky, vzostupne, oddelené
   „, “ (napr. `4829, 4830, 4831`).
 - Bez ZL v snapshote → „—“.
 - Na mobile (karty) ako jeden riadok „ZL 4829, 4830“.
 
 ### 10.2 Dopravca (zoznam aj detail)
+
 Mapovanie podľa **kódu** `shipping.code` (`OSHP.TrnspCode`), nie podľa názvu:
 
-| Kód | Kľúč | Text badge | Štýl (len farby z brandingu, SPEC §9) |
-|---|---|---|---|
-| 11 | `packeta` | Packeta | existujúci tyrkysový |
-| 19 | `packeta_courier` | Packeta kuriér | existujúci tyrkysový |
-| 2 | `gls` | GLS | existujúci šedý |
-| 10 | `messenger` | Messenger | plná tmavá `#231f20`, biely text |
-| 1 | `pickup` | Osobný odber | biele pozadie, tmavý 1px rámik, tmavý text |
-| iný | `other` | `shipping.name` zo SAP | svetlošedý rámik |
+| Kód | Kľúč              | Text badge             | Štýl (len farby z brandingu, SPEC §9)      |
+| --- | ----------------- | ---------------------- | ------------------------------------------ |
+| 11  | `packeta`         | Packeta                | existujúci tyrkysový                       |
+| 19  | `packeta_courier` | Packeta kuriér         | existujúci tyrkysový                       |
+| 2   | `gls`             | GLS                    | existujúci šedý                            |
+| 10  | `messenger`       | Messenger              | plná tmavá `#231f20`, biely text           |
+| 1   | `pickup`          | Osobný odber           | biele pozadie, tmavý 1px rámik, tmavý text |
+| iný | `other`           | `shipping.name` zo SAP | svetlošedý rámik                           |
 
 - Viac ZL s rôznym dopravcom → viac badge (každý dopravca raz).
 - **Fallback:** objednávka bez ZL v snapshote → dopravca podľa Shopify tagov
@@ -357,8 +414,11 @@ Mapovanie podľa **kódu** `shipping.code` (`OSHP.TrnspCode`), nie podľa názvu
   zo SAP chýba → fallback Shopify.
 
 ### 10.3 Detail objednávky
+
 - **Doprava:** jeden dopravca → len dopravca (+ pobočka). Viac dopravcov →
-  riadok na každého: `GLS – ZL 4819, 4820`.
+  riadok na každého: `GLS – ZL 4819, 4820` (pri Packete s pobočkou).
+- Objednávka bez ZL v snapshote (alebo bez snapshotu) → detail bez SAP
+  riadkov, ako pred integráciou; karty bez riadku ZL.
 - **Karta položky:** `ZL: 212604819` (celé číslo) na **samostatnom riadku
   hneď pod hlavičkou karty** (SKU · Vytlačené · Design ID), nie v nej —
   hlavička je na mobile na hranici šírky (SPEC §4.2, ~346 px) a jej
@@ -366,25 +426,47 @@ Mapovanie podľa **kódu** `shipping.code` (`OSHP.TrnspCode`), nie podľa názvu
 - **Stav zákazky** v tom istom riadku za číslom ZL: kompaktný pill so
   stavom (text z číselníka §5.3, napr. „Na ceste“) a vedľa drobným šedým
   písmom čas poslednej synchronizácie („aktualizované 23. 10. 14:02“, zo
-  `syncedAt`). Ak je `syncedAt` starší než 60 min, čas je zvýraznený ako
-  neaktuálny (rovnaké pravidlo ako §10.4). Na úzkom displeji sa pill s časom
-  môže zalomiť pod číslo ZL.
+  `syncedAt`). Ak je `syncedAt` starší než 60 min (rovnaké pravidlo ako
+  §10.4), **celý riadok ZL** (číslo, pill aj čas) sa jemne spriehľadní
+  (`opacity: 0.5`) — bez výstražnej farby a tučného písma; údaj má pôsobiť
+  ako menej dôležitý, nie ako chyba. Na úzkom displeji sa pill s časom
+  môže zalomiť pod číslo ZL. ZL bez stavu v SAP → len čas, bez pillu.
   Štýl pillu: neutrálny šedý; stavy **63 Nedostupný textil** a
   **70 Prerušená výroba/Prestoj** s pozadím `--color-warning-bg` (rovnaké ako
   „čaká na SAP“, SPEC §9) — žiadne nové farby.
-- **ZL s čistým textilom** (`docType "3"`) nemá kartu dizajnu → v hlavičke
-  detailu riadok „Čistý textil: ZL 4830 · {pill stavu} {čas}“.
+- **ZL s čistým textilom** (`docType "3"`): riadok ZL so stavom a časom
+  synchronizácie je na **kartách položiek bez personalizácie**, presne
+  rovnako ako pri personalizovaných (samostatný riadok pod hlavičkou karty —
+  tou je názov produktu), nie v hlavičke detailu. Párovanie: každá položka
+  podľa pôvodného SKU (`originalLines`), fallback presná zhoda SKU
+  s aktuálnymi riadkami; viac položiek zdieľa jednu ZL (§6.3). Zmena textilu
+  sa zobrazí rovnako ako pri personalizovanej položke — pri položke, ktorej
+  pôvodný riadok v ZL už nie je.
 - **Zmenený textil** (ZL má `textileChange`): ako hlavný údaj o textile sa
   zobrazí aktuálny textil zo SAP (`lines[].description`, množstvo), pod ním
-  nenápadný varovný chip „Zmenené v SAP 19. 10. 2026 12:25 · Vladimír Horvát“
-  a menším prečiarknutým textom „pôvodne objednané: {Shopify variant}“.
-  Skladové hodnoty Shopify sa pri zmenenom textile nezobrazujú (patria
-  k pôvodnému SKU).
-- Upozornenia z fallback párovania (§7 kroky 2–3) ako rovnaký chip bez času.
-- Nespárované ZL (§7 krok 4) v hlavičke: „ZL bez priradeného dizajnu: …“.
+  nenápadný varovný chip „Zmenené v SAP 19. 10. 2026 12:25 · VH“ a menším
+  prečiarknutým textom „pôvodne objednané: {SKU zo Shopify} {variant}“,
+  napr. „pôvodne objednané: G000822 White / L“. Používateľ SAP len
+  **iniciálami** (prvé písmeno každého slova veľkými písmenami, „Vladimír
+  Horvát“ → „VH“; jednoslovné meno, napr. „B1i“, celé) — v snapshote
+  zostáva celé meno, iniciály sú len zobrazenie (`sapUserInitials` v
+  `lib/sap/display.ts`). Skladové hodnoty Shopify sa pri zmenenom textile
+  nezobrazujú (patria k pôvodnému SKU).
+- Upozornenia z fallback párovania (§7 kroky 2–3) ako rovnaký chip bez času
+  („Zmenené v SAP“, resp. „Zmenené v SAP · skontroluj“).
+- Karta bez ZL (§7 krok 4): šedé „ZL: nepriradené“ v riadku ZL.
+- Nespárované ZL v hlavičke, riadok na každú (vzostupne podľa `docNum`):
+  „ZL bez priradenej položky: ZL 4831 · {popis textilu} · {pill stavu} {čas}“.
+  Patria sem ZL s dizajnom bez karty (§7 krok 4), ZL s čistým textilom bez
+  zodpovedajúcej položky a ZL bez `docType` (§8).
+- Časy sa vždy formátujú v Europe/Bratislava (Vercel beží v UTC),
+  implementácia `lib/sap/display.ts` (unit testy).
 
 ### 10.4 Vek dát
-- V hlavičke zoznamu malý text „SAP: pred 12 min“ (zo `syncedAt`).
+
+- V hlavičke zoznamu (vedľa dátumu) malý text „SAP: pred 12 min“ (zo
+  `syncedAt`, počítané na serveri pri renderi). Presne 60 min je ešte
+  aktuálne, neaktuálne je až „starší než 60 min“.
 - Starší než 60 min → šedý text „SAP dáta neaktuálne (pred 3 h)“; údaje sa
   stále zobrazia.
 - Žiadny snapshot → appka funguje ako pred integráciou, bez chyby.
@@ -410,6 +492,42 @@ Mapovanie podľa **kódu** `shipping.code` (`OSHP.TrnspCode`), nie podľa názvu
   zadanie.
 - Agent loguje do súboru v profile (bez hesiel a osobných údajov): čas, počet
   ZL, HTTP odpoveď.
+- **Agent `tools/sap-agent/sap-sync-agent.ps1` (avd-ps-1.3)**. Verzia 1.1
+  overená 23. 10. 2026: prvý ostrý sync `OK 200` — 59 ZL, 21 objednávok,
+  57 ZL s históriou, payload ~70 kB. Zmeny v 1.2: každé volanie sync je
+  obalené `try/catch` — neočakávaná chyba sa zaloguje (červenou) a v režime
+  `-Loop` agent pokračuje ďalším cyklom (predtým by skript skončil a sync
+  potichu prestal); neprázdne `skipped` v odpovedi servera (§8) agent
+  zaloguje žltou (počet a čísla vynechaných ZL). Zmeny v 1.3: pri štarte
+  vypne QuickEdit režim konzoly (úskalie nižšie; ak to zlyhá, len zaloguje
+  varovanie a pokračuje) a `generatedAt` zaznamená **pred** pripojením do SAP
+  a čítaním dát, nie pri skladaní payloadu — pri oneskorení medzi čítaním
+  a odoslaním appka inak ukazovala staré dáta ako čerstvé.
+  - Režimy: `-DryRun` (uloží `payload.json`, nič neposiela), `-Once`, `-Loop`
+    (`-IntervalMinutes`, default 15), `-ResetCredentials`.
+  - Údaje: `%LOCALAPPDATA%\MerchyouSapAgent\` — `sap-cred.xml`,
+    `sync-secret.xml` (DPAPI), `agent.log` (rotácia pri 1 MB), `payload.json`.
+  - Na AVD sa spúšťa z Plochy:
+    `powershell -ExecutionPolicy Bypass -File "$([Environment]::GetFolderPath('Desktop'))\sap-sync-agent.ps1" -Loop`
+  - Pri 0 ZL sa nič neposiela (ochrana pred vymazaním).
+  - **Známe obmedzenie:** `generatedAt` (v appke `syncedAt`, vek dát) je
+    čas hodín AVD, nie SAP servera, zaznamenaný tesne **pred** čítaním zo
+    SAP (od avd-ps-1.3). Pri posune hodín na AVD je vek dát v UI nepresný.
+- **Úskalia Windows PowerShell 5.1 (overené):**
+  - `ConvertTo-Json` rozbalí pole s 1 prvkom na objekt, ak prejde cez `$( )`
+    alebo priradenie z `if` → polia vždy obaliť `@( )`.
+  - Telo requestu posielať ako UTF-8 bajty (`charset=utf-8`), inak sa pokazí
+    diakritika.
+  - `Read-Host -AsSecureString`: Ctrl+V vloží riadiaci znak, nie text →
+    vkladať pravým klikom; agent kód overuje (dĺžka ≥ 20, bez riadiacich znakov).
+  - `$PSScriptRoot` je v predvolených hodnotách `param()` prázdny.
+  - **QuickEdit režim konzoly:** kliknutie do okna (označenie textu) pozastaví
+    skript, kým sa nestlačí kláves — agent tak 23. 10. 2026 stál takmer
+    4 hodiny (dáta načítané 10:46:54, odoslané až 14:31:29). Agent preto pri
+    štarte vypne `ENABLE_QUICK_EDIT_MODE` (0x0040) cez kernel32
+    `GetStdHandle(-10)` / `GetConsoleMode` / `SetConsoleMode` (Add-Type),
+    s ponechaným `ENABLE_EXTENDED_FLAGS` (0x0080). Hex literál `0xFFFFFFBF`
+    je v PS 5.1 záporný `int32` → maska sa počíta cez `int64`.
 
 ## 13. Roadmapa (mimo v1)
 
@@ -431,6 +549,8 @@ Mapovanie podľa **kódu** `shipping.code` (`OSHP.TrnspCode`), nie podľa názvu
 ## 14. Testovacie skripty
 
 `tools/sap-agent/` v repe (bez secretov): `sap-query.ps1` (univerzálny SELECT
-test), neskôr `sap-sync-agent.ps1`. Spúšťanie na AVD:
+test), `sap-sync-agent.ps1` (agent, §12), `test-sync.ps1` + `sample-payload.json`
+(test endpointu vzorovými dátami — **prepíše produkčný snapshot**, po teste
+spustiť agenta `-Once`). Spúšťanie na AVD:
 `powershell -ExecutionPolicy Bypass -File "<cesta>\skript.ps1"`.
 Súbory ukladať ako UTF-8 s BOM (Windows PowerShell 5.1).

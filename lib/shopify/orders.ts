@@ -1,3 +1,4 @@
+import type { CarrierBadge } from "../sap/display";
 import { adminGraphql } from "./admin-client";
 
 export type ShopifyLineItem = {
@@ -69,6 +70,18 @@ export function getCarrierLabel(
   return hasTag(tags, "zasilkovna_unselected")
     ? "GLS (nevybraná Packeta)"
     : "GLS";
+}
+
+// Badge dopravcu podľa Shopify tagov — fallback pre objednávky bez ZL v SAP
+// snapshote (docs/SAP-INTEGRATION.md §10.2).
+export function getShopifyCarrierBadge(
+  tags: string[],
+  pickupPointName?: string,
+): CarrierBadge {
+  return {
+    key: getCarrier(tags) === "Packeta" ? "packeta" : "gls",
+    label: getCarrierLabel(tags, pickupPointName),
+  };
 }
 
 // Zakeke pri personalizácii vytvorí Shopify klon produktu (Product type "zakeke-design")
@@ -222,7 +235,13 @@ function mapOrder(node: OrderNode): ShopifyOrder {
 
 type StockBySku = Map<
   string,
-  { stockMerchyou: string | null; stockSuppliers: string | null }
+  {
+    stockMerchyou: string | null;
+    stockSuppliers: string | null;
+    // ID originálneho (nie zakeke-design) produktu — párovanie so SAP ZL podľa
+    // „iného variantu toho istého produktu“ (docs/SAP-INTEGRATION.md §7 krok 2).
+    productId: string;
+  }
 >;
 
 export async function fetchStockBySku(
@@ -248,6 +267,7 @@ export async function fetchStockBySku(
           node {
             sku
             product {
+              id
               productType
             }
             metafields(namespace: "custom", first: 10) {
@@ -269,7 +289,7 @@ export async function fetchStockBySku(
       edges: {
         node: {
           sku: string | null;
-          product: { productType: string | null };
+          product: { id: string; productType: string | null };
           metafields: { edges: { node: { key: string; value: string } }[] };
         };
       }[];
@@ -296,10 +316,20 @@ export async function fetchStockBySku(
     result.set(sku, {
       stockMerchyou: findMetafield("stock_merchyou"),
       stockSuppliers: findMetafield("stock_suppliers"),
+      productId: original.product.id,
     });
   }
 
   return result;
+}
+
+export async function fetchOriginalProductIdBySku(
+  skus: string[],
+): Promise<Map<string, string>> {
+  const stockBySku = await fetchStockBySku(skus);
+  return new Map(
+    Array.from(stockBySku, ([sku, { productId }]) => [sku, productId]),
+  );
 }
 
 async function attachStockData(orders: ShopifyOrder[]): Promise<void> {

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { formatDate } from "@/lib/format";
 import { compareOrders } from "@/lib/order-sort";
+import { CarrierBadge, carrierBadgeClass } from "@/lib/sap/display";
 
 export type OrderRow = {
   orderNumber: string;
@@ -11,8 +12,9 @@ export type OrderRow = {
   createdAt: string;
   customerName: string;
   skuLabel: string;
-  carrier: "Packeta" | "GLS";
-  carrierLabel: string;
+  // Posledné 4 číslice SAP zákaziek ("4829, 4830") alebo "—" (§10.1).
+  zlLabel: string;
+  carriers: CarrierBadge[];
   sapDone: boolean;
   deliveryDeadline: string | null;
   overdue: boolean;
@@ -78,8 +80,9 @@ export function OrdersList({ orders }: { orders: OrderRow[] }) {
               <th className="order-table-nowrap-col">Deadline</th>
               <th>Zákazník</th>
               <th className="order-table-sku-col">SKU · KS</th>
-              <th>Dopravca</th>
-              <th>SAP</th>
+              <th className="order-table-zl-col">ZL</th>
+              <th className="order-table-carrier-col">Dopravca</th>
+              <th className="order-table-sap-col">SAP</th>
             </tr>
           </thead>
           <tbody>
@@ -135,12 +138,9 @@ function OrderCard({ order }: { order: OrderRow }) {
       </div>
       <div className="order-customer">{order.customerName}</div>
       <div className="order-items-count">{order.skuLabel}</div>
+      <div className="order-items-count order-card-zl">ZL {order.zlLabel}</div>
       <div className="order-badges">
-        <span
-          className={`badge ${order.carrier === "Packeta" ? "badge--carrier-zas" : "badge--carrier-gls"}`}
-        >
-          {order.carrierLabel}
-        </span>
+        <CarrierBadges carriers={order.carriers} />
         {!order.sapDone && (
           <span className="badge badge--sap-pending">čaká na SAP</span>
         )}
@@ -175,14 +175,13 @@ function OrderTableRow({ order }: { order: OrderRow }) {
       </td>
       <td>{order.customerName}</td>
       <td className="order-table-sku-col">{order.skuLabel}</td>
-      <td>
-        <span
-          className={`badge ${order.carrier === "Packeta" ? "badge--carrier-zas" : "badge--carrier-gls"}`}
-        >
-          {order.carrierLabel}
-        </span>
+      <td className="order-table-zl-col">{order.zlLabel}</td>
+      <td className="order-table-carrier-col">
+        <div className="order-badges order-badges--inline">
+          <CarrierBadges carriers={order.carriers} />
+        </div>
       </td>
-      <td>
+      <td className="order-table-sap-col">
         {order.sapDone ? (
           "✓"
         ) : (
@@ -190,5 +189,17 @@ function OrderTableRow({ order }: { order: OrderRow }) {
         )}
       </td>
     </tr>
+  );
+}
+
+function CarrierBadges({ carriers }: { carriers: CarrierBadge[] }) {
+  return (
+    <>
+      {carriers.map((carrier) => (
+        <span key={carrier.key + carrier.label} className={`badge ${carrierBadgeClass(carrier.key)}`}>
+          {carrier.label}
+        </span>
+      ))}
+    </>
   );
 }

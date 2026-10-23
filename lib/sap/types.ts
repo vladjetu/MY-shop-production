@@ -10,12 +10,15 @@ const sapLocalDateTime = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/, "očakávaný lokálny čas YYYY-MM-DDTHH:mm:ss bez časovej zóny");
 
-// Len produktové riadky — servisné položky S… agent neposiela.
+// Len produktové riadky — servisné položky S… agent neposiela. itemCode null
+// (textový riadok) a quantity 0 (support riadok vynuloval namiesto zmazania)
+// sú povolené, aby kvôli nim neprepadla celá ZL; pri párovaní sa ignorujú
+// (lib/sap/match.ts).
 export const sapLineSchema = z.object({
   lineNum: z.number().int().nonnegative(),
-  itemCode: z.string().min(1),
-  description: z.string(),
-  quantity: z.number().positive(),
+  itemCode: z.string().min(1).nullable(),
+  description: z.string().nullable(),
+  quantity: z.number().nonnegative(),
 });
 
 export const sapHistoryVersionSchema = z.object({
@@ -39,9 +42,10 @@ export const sapPayloadOrderSchema = z.object({
   docNum: z.number().int().positive(),
   numAtCard: z.string(),
   // Surové kódy zo SAP (string) — význam mapuje appka podľa číselníkov §5.3.
-  docType: z.string(),
+  // null = pole v SAP prázdne: ZL bez docType sa nepáruje, bez stavu nemá pill.
+  docType: z.string().nullable(),
   special: z.string().nullable(),
-  status: z.string(),
+  status: z.string().nullable(),
   priority: z.string().nullable(),
   noPrint: z.boolean(),
   shipping: sapShippingSchema,
@@ -53,11 +57,13 @@ export const sapPayloadOrderSchema = z.object({
   history: z.array(sapHistoryVersionSchema),
 });
 
+// Obálka payloadu. ZL sa validujú každá zvlášť (sapPayloadOrderSchema v
+// lib/sap/sync.ts) — jedna chybná ZL nesmie zablokovať celý sync (§8).
 export const sapSyncPayloadSchema = z.object({
   schemaVersion: z.literal(1),
   generatedAt: z.iso.datetime({ offset: true }),
   agent: z.string().min(1),
-  orders: z.array(sapPayloadOrderSchema),
+  orders: z.array(z.unknown()),
   // Ochrana pred vymazaním snapshotu chybou agenta (§8).
   allowEmpty: z.boolean().optional(),
 });
@@ -66,7 +72,15 @@ export type SapLine = z.infer<typeof sapLineSchema>;
 export type SapHistoryVersion = z.infer<typeof sapHistoryVersionSchema>;
 export type SapShipping = z.infer<typeof sapShippingSchema>;
 export type SapPayloadOrder = z.infer<typeof sapPayloadOrderSchema>;
-export type SapSyncPayload = z.infer<typeof sapSyncPayloadSchema>;
+export type SapSyncPayload = Omit<z.infer<typeof sapSyncPayloadSchema>, "orders"> & {
+  orders: SapPayloadOrder[];
+};
+
+// ZL vynechaná pri syncu pre neplatné údaje — vracia sa agentovi v odpovedi.
+export type SapSkippedOrder = {
+  docNum: number | null;
+  reason: string;
+};
 
 export type SapTextileChange = {
   // ISO 8601 s offsetom (Europe/Bratislava), napr. "2026-10-19T12:25:19+02:00".
