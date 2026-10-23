@@ -50,10 +50,13 @@ responzívne aj pre desktop. Jazyk UI: slovenčina.
   (Client Credentials Grant, pozri
   https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens/client-credentials-grant).
   Token sa cachuje v pamäti servera a pred expiráciou automaticky obnovuje.
-- **Úložisko:** appka nemá vlastnú databázu — jediný stav, ktorý appka sama
-  zapisuje, sú Shopify order metafieldy (deadliny, §5, a od v1.2 aj stav
-  „vytlačené", nižšie). Všetko ostatné sa číta live z API pri každom
-  zobrazení.
+- **Úložisko:** appka naďalej nemá vlastnú databázu pre stav výroby — jediný
+  stav, ktorý appka sama zapisuje, sú Shopify order metafieldy (deadliny, §5,
+  a od v1.2 aj stav „vytlačené", nižšie). Všetko ostatné sa číta live z API
+  pri každom zobrazení. **Výnimka (v1.3):** Upstash Redis (pripojený cez Vercel
+  Marketplace) **len** pre SAP snapshot — jeden kľúč `sap:snapshot:v1`, ktorý
+  celý prepisuje SAP agent cez `POST /api/sap-sync`; appka ho len číta
+  (§3.4, docs/SAP-INTEGRATION.md §9). Nič iné sa do Upstash neukladá.
 - **Stav „vytlačené" (v1.2):** order metafield `custom.printed_items`, typ
   `json`, hodnota = pole stringov s kľúčmi položiek v tvare
   `"{SKU}::{DesignID}"` (napr. `"278448::102539159"`). SKU identifikuje kus
@@ -104,7 +107,14 @@ ZAKEKE_CLIENT_SECRET     # S2S OAuth token flow podľa Zakeke docs
 APP_PASSWORD             # heslo do appky
 APP_BASE_URL             # verejná URL appky, napr. https://my-shop-production.vercel.app
                          # (bez lomítka na konci) — používa ju /api/admin/register-webhook
+SAP_SYNC_SECRET          # zdieľaný secret s SAP agentom (hlavička x-sap-sync-secret, §3.4)
+KV_REST_API_URL          # Upstash Redis (SAP snapshot) — nastaví Vercel Marketplace
+KV_REST_API_TOKEN        # Upstash Redis — token na zápis/čítanie
+                         # (Marketplace pridá aj KV_REST_API_READ_ONLY_TOKEN, KV_URL,
+                         # REDIS_URL — appka ich nepoužíva)
 ```
+
+Lokálne v `.env.local` (vzor bez hodnôt: `.env.example`), nikdy v Gite.
 
 ## 3. Zdroje dát a ich role
 
@@ -204,6 +214,36 @@ Zdroj pre: zoznam dizajnov v objednávke, náhľady per strana, tlačové PNG pe
   (`areaName` je prázdne), líšia sa len segmentom „x" v názve súboru (`_1_`,
   `_2_`). Tento segment sa na číslovanie nepoužíva — pri jedinej ploche na
   strane môže byť aj `_2_`.
+
+### 3.4 SAP Business One — „čo sa naozaj vyrába"
+
+**Zdroj pravdy: [docs/SAP-INTEGRATION.md](docs/SAP-INTEGRATION.md)** — pri zmene
+SAP integrácie aktualizuj ten dokument aj túto sekciu.
+
+Support mení objednávky (veľkosť, produkt, dopravu) len v SAP, preto je SAP
+zdrojom pravdy pre textil, stav zákazky a dopravcu. Jedna Shopify objednávka
+= 0..N zákaziek (ZL), kľúč `ORDR.NumAtCard = "merchyou.shop:" + order.name`.
+
+- **Tok dát:** PowerShell agent na AVD číta SAP cez DI API (len `SELECT`) a
+  posiela kompletný snapshot otvorených e-shop ZL na `POST /api/sap-sync`
+  (jednosmerne AVD → Vercel). Endpoint je vynechaný z presmerovania na
+  `/login` (middleware) a chránený výhradne hlavičkou `x-sap-sync-secret`
+  (`SAP_SYNC_SECRET`, porovnanie v konštantnom čase). Telo max. 2 MB,
+  validácia `zod` (`lib/sap/types.ts`), ZL mimo `merchyou.shop:#` sa ignorujú,
+  prázdny zoznam sa odmietne bez `allowEmpty: true`.
+- **Zmena textilu** (`lib/sap/history.ts`, unit testy na reálnych ZL 52017
+  a 52021): server pri prijatí porovná riadky ZL s verziou 1 zo SAP Change
+  logu a uloží `originalLines` + `textileChange` (čas a autor zmeny), nie
+  celú históriu.
+- **Úložisko:** Upstash Redis, kľúč `sap:snapshot:v1` (§2). Appka číta cez
+  `lib/sap/snapshot.ts` (`getSapSnapshot()`, `getSapOrdersFor(orderName)`,
+  cache 60 s). Chýbajúci snapshot/env alebo výpadok Upstash → `null` a appka
+  funguje ako pred integráciou.
+- **Dáta sú aktuálne len počas AVD relácie** (agent tam beží) — UI musí
+  ukazovať vek dát (`syncedAt`).
+- Testovacie nástroje: `tools/sap-agent/` (`sample-payload.json`,
+  `test-sync.ps1`).
+- Stav: v1.3 backend hotový, UI ešte nie (docs/SAP-INTEGRATION.md §10).
 
 ## 4. Obrazovky
 
@@ -456,8 +496,6 @@ metafield — appka ho pri zobrazení už nikdy neprepočítava (`custom.deadlin
 
 ## 6. Mimo rozsahu MVP (verzia 1.1+)
 
-- Napojenie na SAP (číslo zákazkového listu). Medzikrok: ak sa číslo objaví
-  ako tag/metafield/poznámka v Shopify, appka ho automaticky zobrazí.
 - Druhý e-shop merchshop.com (bez Zakeke) — mimo rozsahu.
 - Push notifikácie, užívateľské účty, história.
 - Vizuálne odlíšenie 3-dňových položiek priamo v detaile objednávky.
@@ -498,6 +536,9 @@ metafield — appka ho pri zobrazení už nikdy neprepočítava (`custom.deadlin
    - 4b. Výkon (cache, prefetch, skeleton) a branding (§9).
 5. Doladenie UI podľa spätnej väzby výroby.
 6. Presné deadliny cez webhook `orders/create` + backfill + UI stĺpce (§5).
+7. SAP integrácia — backend: `POST /api/sap-sync`, výpočet zmeny textilu,
+   snapshot v Upstash Redis, čítanie snapshotu (§3.4,
+   docs/SAP-INTEGRATION.md). Potom UI podľa docs/SAP-INTEGRATION.md §10.
 
 ## 9. Branding
 
@@ -562,3 +603,10 @@ metafield — appka ho pri zobrazení už nikdy neprepočítava (`custom.deadlin
   zo zoznamu ostatných tagov (§4.2). Oprava: produkty s viacerými tlačovými
   plochami na jednej strane (napr. zástera, 2× FRONT) — download podľa
   `sideIndex`, popisky „FRONT 1"/„FRONT 2" (§3.3, §4.2).
+- **v1.3 (rozpracované)** — SAP Business One, backend (§3.4,
+  docs/SAP-INTEGRATION.md): endpoint `POST /api/sap-sync` pre SAP agenta
+  (secret v hlavičke, limit 2 MB, `zod` validácia, filter e-shopu, ochrana
+  pred prázdnym snapshotom), výpočet zmeny textilu zo SAP Change logu
+  (`lib/sap/history.ts`), snapshot v Upstash Redis (`sap:snapshot:v1`) a jeho
+  čítanie s cache 60 s (`lib/sap/snapshot.ts`), testovacie nástroje
+  `tools/sap-agent/`. UI zatiaľ bez zmeny.

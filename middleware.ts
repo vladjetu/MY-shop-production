@@ -8,11 +8,14 @@ export async function middleware(request: NextRequest) {
   // na neprihlásenej /login stránke, žiadne citlivé dáta.
   // /api/webhooks volá priamo Shopify (nemá našu session cookie) — chránené je
   // výhradne HMAC podpisom overeným v samotnom route handleri.
+  // /api/sap-sync volá SAP agent z AVD — chránené výhradne hlavičkou
+  // x-sap-sync-secret (lib/sap/sync.ts). Presná zhoda, nie prefix.
   if (
     pathname.startsWith("/login") ||
     pathname.startsWith("/api/login") ||
     pathname.startsWith("/brand") ||
-    pathname.startsWith("/api/webhooks")
+    pathname.startsWith("/api/webhooks") ||
+    pathname === "/api/sap-sync"
   ) {
     return NextResponse.next();
   }

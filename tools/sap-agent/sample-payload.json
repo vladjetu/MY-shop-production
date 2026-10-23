@@ -1,0 +1,289 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-22T14:05:00+02:00",
+  "agent": "avd-ps-1.0",
+  "orders": [
+    {
+      "docEntry": 52017,
+      "docNum": 212604829,
+      "numAtCard": "merchyou.shop:#2045",
+      "docType": "5",
+      "special": null,
+      "status": "21",
+      "priority": "H",
+      "noPrint": false,
+      "shipping": {
+        "code": 11,
+        "name": "Packeta výdajné miesto",
+        "pickupPointId": "34994",
+        "pickupPointName": "Z-BOX Bratislava, Limbová 2A"
+      },
+      "updatedAt": "2026-10-19T12:25:19",
+      "updatedBy": "Vladimír Horvát",
+      "lines": [
+        { "lineNum": 0, "itemCode": "752001", "description": "STTW259, Natural Raw, M", "quantity": 1 }
+      ],
+      "history": [
+        {
+          "logInstance": 1,
+          "updatedAt": "2026-10-18T23:51:40",
+          "updatedBy": "B1i",
+          "lines": [
+            { "lineNum": 0, "itemCode": "752002", "description": "STTW259, Natural Raw, L", "quantity": 1 }
+          ]
+        },
+        {
+          "logInstance": 2,
+          "updatedAt": "2026-10-19T07:46:13",
+          "updatedBy": "B1i",
+          "lines": [
+            { "lineNum": 0, "itemCode": "752002", "description": "STTW259, Natural Raw, L", "quantity": 1 }
+          ]
+        }
+      ]
+    },
+    {
+      "docEntry": 52018,
+      "docNum": 212604830,
+      "numAtCard": "merchyou.shop:#2045",
+      "docType": "3",
+      "special": null,
+      "status": "21",
+      "priority": "H",
+      "noPrint": true,
+      "shipping": {
+        "code": 11,
+        "name": "Packeta výdajné miesto",
+        "pickupPointId": "34994",
+        "pickupPointName": "Z-BOX Bratislava, Limbová 2A"
+      },
+      "updatedAt": "2026-10-19T07:46:14",
+      "updatedBy": "B1i",
+      "lines": [
+        { "lineNum": 0, "itemCode": "752001", "description": "STTW259, Natural Raw, M", "quantity": 2 }
+      ],
+      "history": [
+        {
+          "logInstance": 1,
+          "updatedAt": "2026-10-18T23:51:41",
+          "updatedBy": "B1i",
+          "lines": [
+            { "lineNum": 0, "itemCode": "752001", "description": "STTW259, Natural Raw, M", "quantity": 2 }
+          ]
+        }
+      ]
+    },
+    {
+      "docEntry": 52019,
+      "docNum": 212604831,
+      "numAtCard": "merchyou.shop:#2045",
+      "docType": "5",
+      "special": null,
+      "status": "40",
+      "priority": "H",
+      "noPrint": false,
+      "shipping": {
+        "code": 11,
+        "name": "Packeta výdajné miesto",
+        "pickupPointId": "34994",
+        "pickupPointName": "Z-BOX Bratislava, Limbová 2A"
+      },
+      "updatedAt": "2026-10-19T07:46:14",
+      "updatedBy": "B1i",
+      "lines": [
+        { "lineNum": 0, "itemCode": "278448", "description": "STTU169, White, M", "quantity": 1 }
+      ],
+      "history": [
+        {
+          "logInstance": 1,
+          "updatedAt": "2026-10-18T23:51:41",
+          "updatedBy": "B1i",
+          "lines": [
+            { "lineNum": 0, "itemCode": "278448", "description": "STTU169, White, M", "quantity": 1 }
+          ]
+        }
+      ]
+    },
+    {
+      "docEntry": 52020,
+      "docNum": 212604832,
+      "numAtCard": "merchyou.shop:#2045",
+      "docType": "5",
+      "special": null,
+      "status": "40",
+      "priority": "H",
+      "noPrint": false,
+      "shipping": {
+        "code": 11,
+        "name": "Packeta výdajné miesto",
+        "pickupPointId": "34994",
+        "pickupPointName": "Z-BOX Bratislava, Limbová 2A"
+      },
+      "updatedAt": "2026-10-19T07:46:15",
+      "updatedBy": "B1i",
+      "lines": [
+        { "lineNum": 0, "itemCode": "278447", "description": "STTU169, White, S", "quantity": 2 },
+        { "lineNum": 1, "itemCode": "278449", "description": "STTU169, White, L", "quantity": 1 }
+      ],
+      "history": [
+        {
+          "logInstance": 1,
+          "updatedAt": "2026-10-18T23:51:42",
+          "updatedBy": "B1i",
+          "lines": [
+            { "lineNum": 0, "itemCode": "278447", "description": "STTU169, White, S", "quantity": 2 },
+            { "lineNum": 1, "itemCode": "278449", "description": "STTU169, White, L", "quantity": 1 }
+          ]
+        }
+      ]
+    },
+    {
+      "docEntry": 52021,
+      "docNum": 212604833,
+      "numAtCard": "merchyou.shop:#2045",
+      "docType": "5",
+      "special": null,
+      "status": "21",
+      "priority": "H",
+      "noPrint": false,
+      "shipping": {
+        "code": 11,
+        "name": "Packeta výdajné miesto",
+        "pickupPointId": "34994",
+        "pickupPointName": "Z-BOX Bratislava, Limbová 2A"
+      },
+      "updatedAt": "2026-10-19T13:16:29",
+      "updatedBy": "B1i",
+      "lines": [
+        { "lineNum": 0, "itemCode": "G000821", "description": "Mikina unisex, Black, M", "quantity": 1 }
+      ],
+      "history": [
+        {
+          "logInstance": 1,
+          "updatedAt": "2026-10-18T23:51:42",
+          "updatedBy": "B1i",
+          "lines": [
+            { "lineNum": 0, "itemCode": "G000822", "description": "Mikina unisex, Black, L", "quantity": 1 }
+          ]
+        },
+        {
+          "logInstance": 2,
+          "updatedAt": "2026-10-19T07:46:15",
+          "updatedBy": "B1i",
+          "lines": [
+            { "lineNum": 0, "itemCode": "G000822", "description": "Mikina unisex, Black, L", "quantity": 1 }
+          ]
+        },
+        {
+          "logInstance": 3,
+          "updatedAt": "2026-10-19T09:12:47",
+          "updatedBy": "B1i",
+          "lines": [
+            { "lineNum": 0, "itemCode": "G000822", "description": "Mikina unisex, Black, L", "quantity": 1 }
+          ]
+        },
+        {
+          "logInstance": 4,
+          "updatedAt": "2026-10-19T12:31:00",
+          "updatedBy": "Vladimír Horvát",
+          "lines": [
+            { "lineNum": 0, "itemCode": "G000821", "description": "Mikina unisex, Black, M", "quantity": 1 }
+          ]
+        }
+      ]
+    },
+    {
+      "docEntry": 51980,
+      "docNum": 212604790,
+      "numAtCard": "merchyou.shop:#2040",
+      "docType": "5",
+      "special": null,
+      "status": "23",
+      "priority": "S",
+      "noPrint": false,
+      "shipping": {
+        "code": 1,
+        "name": "Osobný odber",
+        "pickupPointId": "12873",
+        "pickupPointName": "Z-BOX Trnava, Hlavná 12"
+      },
+      "updatedAt": "2026-10-17T10:04:51",
+      "updatedBy": "Vladimír Horvát",
+      "lines": [
+        { "lineNum": 0, "itemCode": "752003", "description": "STTW259, Natural Raw, XL", "quantity": 1 }
+      ],
+      "history": [
+        {
+          "logInstance": 1,
+          "updatedAt": "2026-10-16T21:18:05",
+          "updatedBy": "B1i",
+          "lines": [
+            { "lineNum": 0, "itemCode": "752003", "description": "STTW259, Natural Raw, XL", "quantity": 1 }
+          ]
+        }
+      ]
+    },
+    {
+      "docEntry": 51981,
+      "docNum": 212604791,
+      "numAtCard": "merchyou.shop:#2040",
+      "docType": "5",
+      "special": null,
+      "status": "30",
+      "priority": "S",
+      "noPrint": false,
+      "shipping": {
+        "code": 1,
+        "name": "Osobný odber",
+        "pickupPointId": "12873",
+        "pickupPointName": "Z-BOX Trnava, Hlavná 12"
+      },
+      "updatedAt": "2026-10-17T10:05:02",
+      "updatedBy": "Vladimír Horvát",
+      "lines": [
+        { "lineNum": 0, "itemCode": "278448", "description": "STTU169, White, M", "quantity": 1 }
+      ],
+      "history": [
+        {
+          "logInstance": 1,
+          "updatedAt": "2026-10-16T21:18:05",
+          "updatedBy": "B1i",
+          "lines": [
+            { "lineNum": 0, "itemCode": "278448", "description": "STTU169, White, M", "quantity": 1 }
+          ]
+        }
+      ]
+    },
+    {
+      "docEntry": 51982,
+      "docNum": 212604792,
+      "numAtCard": "merchyou.shop:#2040",
+      "docType": "3",
+      "special": null,
+      "status": "23",
+      "priority": "S",
+      "noPrint": true,
+      "shipping": {
+        "code": 1,
+        "name": "Osobný odber",
+        "pickupPointId": "12873",
+        "pickupPointName": "Z-BOX Trnava, Hlavná 12"
+      },
+      "updatedAt": "2026-10-17T10:05:10",
+      "updatedBy": "Vladimír Horvát",
+      "lines": [
+        { "lineNum": 0, "itemCode": "278449", "description": "STTU169, White, L", "quantity": 1 }
+      ],
+      "history": [
+        {
+          "logInstance": 1,
+          "updatedAt": "2026-10-16T21:18:06",
+          "updatedBy": "B1i",
+          "lines": [
+            { "lineNum": 0, "itemCode": "278449", "description": "STTU169, White, L", "quantity": 1 }
+          ]
+        }
+      ]
+    }
+  ]
+}
